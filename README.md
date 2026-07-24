@@ -1,7 +1,5 @@
 # Run an open-weight LLM on Stanage
 
-![Stanage logo](stanage-logo.png)
-
 [![ShellCheck](https://github.com/rcgsheffield/stanage-llm/actions/workflows/shellcheck.yml/badge.svg)](https://github.com/rcgsheffield/stanage-llm/actions/workflows/shellcheck.yml)
 
 A minimal, copy-paste example for running open-weight large language models
@@ -238,3 +236,7 @@ doesn't touch.
 - [Apptainer/Singularity on Stanage](https://docs.hpc.shef.ac.uk/en/latest/stanage/software/apps/apptainer.html)
 - [Filestores (home / fastdata / scratch)](https://docs.hpc.shef.ac.uk/en/latest/hpc/filestore.html)
 - [Stanage specifications](https://docs.hpc.shef.ac.uk/en/latest/stanage/cluster_specs.html)
+
+---
+
+![Stanage logo](stanage-logo.png)
