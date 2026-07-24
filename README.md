@@ -241,3 +241,9 @@ doesn't touch.
 ---
 
 ![Stanage logo](stanage-logo.png)
+
+---
+
+## AI Usage Statement
+
+Parts of this repository were written with the assistance of Claude Code, Anthropic's command-line coding agent. AI was used as a tool under human direction, not as an autonomous author. Every change — whether AI-assisted or hand-written — was reviewed, tested, and accepted by a human maintainer before being committed or merged.
