@@ -194,6 +194,7 @@ SLURM resource request you'd adapt for larger runs (batch jobs may run up to
 | Symptom | Fix |
 | --- | --- |
 | `nvidia-smi` fails / model is very slow | You're not on a GPU or forgot `--nv`. Confirm you started the session with `--gres=gpu:1 --qos=gpu`. |
+| `no active SLURM job detected` when sourcing `start_ollama.sh` | You're on a login node. Grab a GPU session first (step 3 above), then source the script from inside it. |
 | `apptainer: command not found` | You're probably not on Stanage. It's preinstalled there — no `module load` needed. |
 | `image not found` / `command not found` for the model | Run `bash scripts/00_setup.sh` on a login node first. |
 | Out-of-memory / CUDA OOM | Use a smaller `MODEL`, or request more with `--mem` / a bigger GPU (`--partition=gpu-h100-nvl` for 94 GB). |
