@@ -22,6 +22,8 @@ ROOT="$(cd "$HERE/.." && pwd)"
 # shellcheck source=../config/env.sh
 source "$ROOT/config/env.sh"
 
+_check_ollama_host_loopback || exit 1
+
 echo "==> Model to prepare : $MODEL"
 echo "==> Fastdata area     : $OLLAMA_DIR"
 echo

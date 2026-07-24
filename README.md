@@ -44,6 +44,11 @@ handles all of that so you can get from *"I have a Stanage account"* to
 > Computing Support](https://docs.hpc.shef.ac.uk/en/latest/help.html#gsc.tab=0)
 > about node exclusivity and SSH access policy on Stanage before
 > relying on `127.0.0.1` binding for isolation.
+>
+> `start_ollama.sh` and `00_setup.sh` enforce this: if `OLLAMA_HOST` is
+> overridden away from `127.0.0.1`/`localhost`/`::1`, they print a warning and
+> refuse to start. Set `OLLAMA_ALLOW_NONLOOPBACK=1` to override at your own
+> risk.
 
 ## Prerequisites
 

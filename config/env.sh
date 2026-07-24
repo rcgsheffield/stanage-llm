@@ -35,6 +35,31 @@ export APPTAINER_CACHEDIR="$PARSCRATCH/apptainer/cache"
 # README.md before relying on this for anything sensitive.
 export OLLAMA_HOST="${OLLAMA_HOST:-127.0.0.1:11434}"
 
+# Refuse (or, with an explicit opt-in, warn and continue) if OLLAMA_HOST has
+# been overridden away from loopback. See "Security" in README.md: nothing
+# else in this setup stops the (unauthenticated) API from being reached by
+# other users on the same node once it's bound beyond 127.0.0.1/::1.
+# Called by start_ollama.sh and 00_setup.sh right after sourcing this file.
+_check_ollama_host_loopback() {
+  local host="${OLLAMA_HOST%:*}"
+  host="${host#[}"
+  host="${host%]}"
+  case "$host" in
+    127.0.0.1 | localhost | ::1) return 0 ;;
+  esac
+
+  echo "WARNING: OLLAMA_HOST='$OLLAMA_HOST' is not bound to loopback." >&2
+  echo "         Ollama's API has NO authentication -- see 'Security' in" >&2
+  echo "         README.md. Binding beyond 127.0.0.1/::1 can expose it to" >&2
+  echo "         other users on the same node." >&2
+  if [[ "${OLLAMA_ALLOW_NONLOOPBACK:-0}" == "1" ]]; then
+    echo "         Continuing because OLLAMA_ALLOW_NONLOOPBACK=1." >&2
+    return 0
+  fi
+  echo "         Refusing to start. Set OLLAMA_ALLOW_NONLOOPBACK=1 to override." >&2
+  return 1
+}
+
 # --- Which model to run -----------------------------------------------------
 # See the "Choosing a model" table in README.md. llama3.1:8b is a fast,
 # well-behaved default that fits comfortably on a single A100.
