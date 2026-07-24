@@ -223,13 +223,6 @@ uses two of them.
 | Fastdata | `/mnt/parscratch/users/$USER` | Container image, model weights, server logs, batch job output/results | No quota, no backups. Fast (Lustre) and readable from both login and GPU nodes — the only area both need to see the same files. Not tuned for lots of small files, so don't dump unrelated small-file workloads here. |
 | Home | `~` (`/users/$USER`) | This git checkout only | Capped at **50 GB**, not backed up. Everything large is deliberately kept out (see `config/env.sh`) so cloning this repo never risks the quota. |
 
-Explicitly **not** used, and not appropriate for this workflow:
-
-| Area | Path | Why not |
-| --- | --- | --- |
-| Node-local scratch | `$TMPDIR` (under `/tmp`) | Per-job and node-local: SLURM deletes it when your job ends and it isn't visible from other nodes. Model weights need to survive from the one-time `00_setup.sh` download (login node) to every later GPU session, so they can't live here. |
-| Shared project space | `/shared` | For data shared across a research group with backup requirements; overkill for a personal model cache. |
-
 See [Filestores](https://docs.hpc.shef.ac.uk/en/latest/hpc/filestore.html) for
 the full picture, including quotas and backup policy for areas this repo
 doesn't touch.
