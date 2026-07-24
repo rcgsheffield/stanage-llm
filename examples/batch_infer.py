@@ -49,18 +49,35 @@ def main() -> int:
         return 1
     in_path, out_path = sys.argv[1], sys.argv[2]
 
+    error_count = 0
     with open(in_path) as fin, open(out_path, "w") as fout:
-        for line in fin:
+        for line_num, line in enumerate(fin, start=1):
             line = line.strip()
             if not line:
                 continue
-            record = json.loads(line)
-            record["response"] = ask(record["prompt"])
+            try:
+                record = json.loads(line)
+                record["response"] = ask(record["prompt"])
+            except Exception as exc:
+                error_count += 1
+                try:
+                    record = json.loads(line)
+                except json.JSONDecodeError:
+                    record = {"raw_line": line}
+                record["error"] = str(exc)
+                fout.write(json.dumps(record) + "\n")
+                fout.flush()
+                print(
+                    f"[error] line={line_num} id={record.get('id', '?')}: {exc}",
+                    file=sys.stderr,
+                    flush=True,
+                )
+                continue
             fout.write(json.dumps(record) + "\n")
             fout.flush()
             print(f"[done] id={record.get('id', '?')}", flush=True)
 
-    print(f"Wrote results to {out_path}")
+    print(f"Wrote results to {out_path} ({error_count} error(s))")
     return 0
 
 
