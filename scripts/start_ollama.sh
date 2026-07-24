@@ -20,6 +20,8 @@ _STANAGE_ROOT="$(cd "$_STANAGE_HERE/.." && pwd)"
 # shellcheck source=../config/env.sh
 source "$_STANAGE_ROOT/config/env.sh"
 
+_check_ollama_host_loopback || return 1 2>/dev/null || exit 1
+
 # The command prefix shared by the server and the client. --nv exposes the
 # GPU; -B mounts fastdata (home is auto-mounted, parscratch is not).
 _ollama() {
