@@ -55,8 +55,12 @@ echo
 # --- 2. Pre-download the model ---------------------------------------------
 # Start a temporary server (CPU is fine for downloading -- no --nv), pull the
 # model, then stop the server. We share the config with the other scripts.
+# -B mounts fastdata into the container -- unlike home, it is not auto-mounted
+# by Apptainer, so without this OLLAMA_MODELS would resolve to a path that
+# doesn't exist inside the container and the download would silently land in
+# the container's throwaway overlay instead of persisting on fastdata.
 echo "==> Starting a temporary Ollama server to download '$MODEL' ..."
-apptainer exec \
+apptainer exec -B /mnt/parscratch \
   --env OLLAMA_MODELS="$OLLAMA_MODELS" \
   --env OLLAMA_HOST="$OLLAMA_HOST" \
   "$OLLAMA_SIF" ollama serve >"$OLLAMA_DIR/setup-server.log" 2>&1 &
@@ -85,14 +89,14 @@ if [[ "${ready:-0}" != "1" ]]; then
 fi
 
 echo "==> Downloading model weights for '$MODEL' (this can take a few minutes) ..."
-apptainer exec \
+apptainer exec -B /mnt/parscratch \
   --env OLLAMA_MODELS="$OLLAMA_MODELS" \
   --env OLLAMA_HOST="$OLLAMA_HOST" \
   "$OLLAMA_SIF" ollama pull "$MODEL"
 
 echo
 echo "==> Models now available in $OLLAMA_MODELS:"
-apptainer exec \
+apptainer exec -B /mnt/parscratch \
   --env OLLAMA_MODELS="$OLLAMA_MODELS" \
   --env OLLAMA_HOST="$OLLAMA_HOST" \
   "$OLLAMA_SIF" ollama list

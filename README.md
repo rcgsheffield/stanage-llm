@@ -170,7 +170,10 @@ extra installs.
 
 To process a file of prompts unattended, submit the batch job — it requests a
 GPU, runs every prompt in [`examples/prompts.jsonl`](examples/prompts.jsonl)
-through the model, writes answers to fastdata, and exits:
+through the model, writes answers to fastdata, and exits. The SLURM output
+log itself also lands in `/mnt/parscratch/users/$USER/ollama/` — not the
+directory you submitted from — so it stays with the rest of that run's
+files:
 
 ```bash
 sbatch examples/batch_inference.sbatch     # from the repo root, on a login node
@@ -209,6 +212,20 @@ login node                         GPU node (interactive srun session)
        v                                          v
   /mnt/parscratch/users/$USER/ollama   (image + weights, shared by both)
 ```
+
+## Where your data lives
+
+Stanage has several storage areas with very different rules; this repo only
+uses two of them.
+
+| Area | Path | Used for | Notes |
+| --- | --- | --- | --- |
+| Fastdata | `/mnt/parscratch/users/$USER` | Container image, model weights, server logs, batch job output/results | No quota, no backups. Fast (Lustre) and readable from both login and GPU nodes — the only area both need to see the same files. Not tuned for lots of small files, so don't dump unrelated small-file workloads here. |
+| Home | `~` (`/users/$USER`) | This git checkout only | Capped at **50 GB**, not backed up. Everything large is deliberately kept out (see `config/env.sh`) so cloning this repo never risks the quota. |
+
+See [Filestores](https://docs.hpc.shef.ac.uk/en/latest/hpc/filestore.html) for
+the full picture, including quotas and backup policy for areas this repo
+doesn't touch.
 
 ## Reference documentation
 
