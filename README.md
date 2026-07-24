@@ -20,6 +20,28 @@ handles all of that so you can get from *"I have a Stanage account"* to
 - **No dependency hell:** the container already contains CUDA, the GPU
   runtime, and Ollama.
 
+## Security
+
+Ollama's API has **no authentication** — anyone who can reach the port can
+use the model and read/write server state. Binding to `127.0.0.1` (the
+default here) only means the API isn't reachable from *other* nodes; it does
+**not** mean it's private to your job:
+
+- Apptainer shares the host's network namespace (no container network
+  isolation), so `127.0.0.1` inside the container is the same loopback
+  interface as the bare-metal node.
+- These example jobs don't request exclusive node allocation, so another
+  user's job can be co-scheduled on the same physical node — and, depending
+  on the cluster's SSH policy, other users may also be able to log into that
+  node directly, whether or not they have a job running on it.
+- Either way, anyone who can reach that node's loopback interface can reach
+  your Ollama server with no credentials required.
+
+Don't run anything sensitive or confidential through this setup as
+configured. If that matters for your use case, check with Research
+Computing about node exclusivity and SSH access policy on Stanage before
+relying on `127.0.0.1` binding for isolation.
+
 ## Prerequisites
 
 - A Stanage account and the ability to log in:
@@ -124,8 +146,9 @@ Two optional extras live in [`examples/`](examples/):
 ### Query the API from Python
 
 Ollama serves an **OpenAI-compatible** API on `http://127.0.0.1:11434`, so your
-existing code using the `openai` client works with only a changed `base_url`.
-Inside the GPU session, after `source scripts/start_ollama.sh`:
+existing code using the `openai` client works with only a changed `base_url`
+(see [Security](#security) above for what that binding does and doesn't
+protect against). Inside the GPU session, after `source scripts/start_ollama.sh`:
 
 ```bash
 python examples/query_api.py "Draft a one-line commit message for a bug fix."
