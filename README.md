@@ -1,5 +1,7 @@
 # Run an open-weight LLM on Stanage
 
+![Stanage logo](stanage-logo.png)
+
 [![ShellCheck](https://github.com/rcgsheffield/stanage-llm/actions/workflows/shellcheck.yml/badge.svg)](https://github.com/rcgsheffield/stanage-llm/actions/workflows/shellcheck.yml)
 
 A minimal, copy-paste example for running open-weight large language models
