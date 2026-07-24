@@ -70,6 +70,7 @@ _check_ollama_host_loopback() {
 }
 
 # --- Which model to run -----------------------------------------------------
-# See the "Choosing a model" table in README.md. llama3.1:8b is a fast,
-# well-behaved default that fits comfortably on a single A100.
-export MODEL="${MODEL:-llama3.1:8b}"
+# See the "Choosing a model" table in README.md. gemma3:270m is a tiny,
+# near-instant default (~300 MB) good for smoke-testing the setup before
+# committing to a bigger download.
+export MODEL="${MODEL:-gemma3:270m}"

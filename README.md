@@ -97,7 +97,7 @@ already done.
 srun --partition=gpu --qos=gpu --gres=gpu:1 --mem=82G --time=08:00:00 --pty bash
 ```
 
-This drops you into an interactive shell on a GPU node with one **A100 (80 GB)**.
+This drops you into an [interactive shell](https://docs.hpc.shef.ac.uk/en/latest/hpc/scheduler/index.html#types-of-job) on a [GPU node](https://docs.hpc.shef.ac.uk/en/latest/stanage/GPUComputingStanage.html#gsc.tab=0) with one **A100 (80 GB)**.
 For the newer **H100** nodes use `--partition=gpu-h100` instead. Interactive
 sessions can run for up to **8 hours**. `--qos=gpu` is required.
 
@@ -130,7 +130,8 @@ A100 you have plenty of room:
 
 | `MODEL`           | Size (quantized) | Good for                              |
 | ----------------- | ---------------- | ------------------------------------- |
-| `llama3.1:8b`     | ~5 GB            | Fast default, general chat            |
+| `gemma3:270m`     | ~300 MB          | Tiny default, quick smoke test        |
+| `llama3.1:8b`     | ~5 GB            | Fast, general chat                    |
 | `qwen2.5:14b`     | ~9 GB            | Stronger reasoning, coding            |
 | `gpt-oss:20b`     | ~14 GB           | Open-weight, strong general model     |
 | `llama3.3:70b`    | ~43 GB           | Highest quality; fits one A100        |

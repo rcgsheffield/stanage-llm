@@ -16,7 +16,7 @@ import os
 import sys
 import urllib.request
 
-MODEL = os.environ.get("MODEL", "llama3.1:8b")
+MODEL = os.environ.get("MODEL", "gemma3:270m")
 HOST = os.environ.get("OLLAMA_HOST", "127.0.0.1:11434")
 BASE_URL = f"http://{HOST}"
 
