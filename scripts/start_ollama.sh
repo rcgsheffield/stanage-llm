@@ -11,9 +11,35 @@
 # Get a GPU session first with:
 #   srun --partition=gpu --qos=gpu --gres=gpu:1 --mem=82G --time=08:00:00 --pty bash
 #
+# Refuses to run outside a SLURM job (i.e. on a login node) -- see
+# _check_running_in_slurm_job below.
+#
 # This script is written to be safe to `source`: it does not enable `set -e`
 # (which would kill your interactive shell on any error) and cleans up after
 # itself via the `stop_ollama` helper.
+
+# Login nodes are shared and not meant for sustained compute; refuse to start
+# the server there. SLURM_JOB_ID is set by both srun and sbatch, and unset on
+# a bare login-node shell, so its absence is a reliable "not in a job" signal.
+# Override with STANAGE_ALLOW_NO_SLURM=1 for local/off-Stanage testing.
+_check_running_in_slurm_job() {
+  if [[ -n "${SLURM_JOB_ID:-}" ]]; then
+    return 0
+  fi
+  if [[ "${STANAGE_ALLOW_NO_SLURM:-0}" == "1" ]]; then
+    echo "WARNING: no SLURM_JOB_ID detected, but continuing because" >&2
+    echo "         STANAGE_ALLOW_NO_SLURM=1." >&2
+    return 0
+  fi
+  echo "ERROR: no active SLURM job detected (SLURM_JOB_ID is unset)." >&2
+  echo "       This script must be sourced inside an interactive GPU session," >&2
+  echo "       not on a login node. Get one with:" >&2
+  echo "         srun --partition=gpu --qos=gpu --gres=gpu:1 --mem=82G --time=08:00:00 --pty bash" >&2
+  echo "       Set STANAGE_ALLOW_NO_SLURM=1 to override (e.g. local testing)." >&2
+  return 1
+}
+
+_check_running_in_slurm_job || return 1 2>/dev/null || exit 1
 
 # Resolve repo root whether sourced from repo root or from scripts/.
 _STANAGE_HERE="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
