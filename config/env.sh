@@ -25,6 +25,13 @@ export OLLAMA_MODELS="$OLLAMA_DIR/models"
 # The Apptainer image we pull once from Docker Hub.
 export OLLAMA_SIF="$OLLAMA_DIR/ollama.sif"
 
+# Pinned to a specific tag@digest (not ":latest") so every pull is
+# reproducible and isn't silently swapped out by an upstream retag. Bump
+# this -- and delete OLLAMA_SIF so 00_setup.sh re-pulls -- when you want a
+# newer Ollama version. Find current tags/digests at
+# https://hub.docker.com/r/ollama/ollama/tags
+export OLLAMA_IMAGE="docker://ollama/ollama:0.32.3@sha256:ec24bcaa2a810eb74171ce7c517813ef4821ed678988845e8d76cf62467036d4"
+
 # Keep Apptainer's build/pull cache off home too.
 export APPTAINER_CACHEDIR="$PARSCRATCH/apptainer/cache"
 

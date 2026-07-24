@@ -46,8 +46,8 @@ mkdir -p "$OLLAMA_MODELS" "$APPTAINER_CACHEDIR"
 if [[ -f "$OLLAMA_SIF" ]]; then
   echo "==> Image already present: $OLLAMA_SIF (skipping pull)"
 else
-  echo "==> Pulling Ollama image from Docker Hub ..."
-  apptainer pull "$OLLAMA_SIF" docker://ollama/ollama
+  echo "==> Pulling Ollama image from Docker Hub ($OLLAMA_IMAGE) ..."
+  apptainer pull "$OLLAMA_SIF" "$OLLAMA_IMAGE"
   echo "==> Image saved to $OLLAMA_SIF"
 fi
 echo
