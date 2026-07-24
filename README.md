@@ -4,7 +4,7 @@ A minimal, copy-paste example for running open-weight large language models
 (Llama, Qwen, Mistral, gpt-oss, …) on the University of Sheffield's
 **[Stanage](https://docs.hpc.shef.ac.uk/en/latest/stanage/index.html)** HPC
 cluster — using [Ollama](https://ollama.com) inside an
-[Apptainer](https://apptainer.org) container.
+[Apptainer](https://docs.hpc.shef.ac.uk/en/latest/stanage/software/apps/apptainer.html) container.
 
 The hard part of doing this isn't the model — it's the HPC mechanics (SLURM,
 GPUs, containers, where multi-GB weights are allowed to live). This repo
