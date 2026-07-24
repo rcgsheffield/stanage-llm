@@ -94,7 +94,7 @@ already done.
 ### 3. Grab a GPU
 
 ```bash
-srun --partition=gpu --qos=gpu --gres=gpu:1 --mem=82G --pty bash
+srun --partition=gpu --qos=gpu --gres=gpu:1 --mem=82G --time=08:00:00 --pty bash
 ```
 
 This drops you into an interactive shell on a GPU node with one **A100 (80 GB)**.

@@ -106,5 +106,5 @@ echo "==> Disk used by models: $(du -sh "$OLLAMA_MODELS" 2>/dev/null | cut -f1)"
 echo
 echo "Setup complete. Next:"
 echo "  1. Start an interactive GPU session:"
-echo "     srun --partition=gpu --qos=gpu --gres=gpu:1 --mem=82G --pty bash"
+echo "     srun --partition=gpu --qos=gpu --gres=gpu:1 --mem=82G --time=08:00:00 --pty bash"
 echo "  2. Then run:  source scripts/start_ollama.sh"

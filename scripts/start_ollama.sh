@@ -9,7 +9,7 @@
 #   chat "Summarise this: ..."  # or send a one-off prompt
 #
 # Get a GPU session first with:
-#   srun --partition=gpu --qos=gpu --gres=gpu:1 --mem=82G --pty bash
+#   srun --partition=gpu --qos=gpu --gres=gpu:1 --mem=82G --time=08:00:00 --pty bash
 #
 # This script is written to be safe to `source`: it does not enable `set -e`
 # (which would kill your interactive shell on any error) and cleans up after
