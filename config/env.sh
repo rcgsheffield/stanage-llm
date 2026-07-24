@@ -1,3 +1,4 @@
+#!/usr/bin/env bash
 # Shared configuration for running an open-weight LLM on Stanage with Ollama.
 #
 # This file is *sourced* by the other scripts (and by you, if you want the
