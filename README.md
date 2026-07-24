@@ -68,7 +68,7 @@ handles all of that so you can get from *"I have a Stanage account"* to
 On a **login node**:
 
 ```bash
-git clone <this-repo-url> stanage-llm
+git clone git@github.com:rcgsheffield/stanage-llm.git
 cd stanage-llm
 ```
 
