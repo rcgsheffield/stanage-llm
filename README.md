@@ -198,7 +198,7 @@ SLURM resource request you'd adapt for larger runs (batch jobs may run up to
 | Out-of-memory / CUDA OOM | Use a smaller `MODEL`, or request more with `--mem` / a bigger GPU (`--partition=gpu-h100-nvl` for 94 GB). |
 | First response is slow, then fast | Normal — the weights load from Lustre into VRAM on first use. |
 | Home quota full | Confirm `OLLAMA_MODELS` points at `/mnt/parscratch/...` (it does by default). Never let Ollama write to `~/.ollama`. |
-| Server won't start | Check the log: `cat /mnt/parscratch/users/$USER/ollama/server.log`. |
+| Server won't start | Check the log printed at startup: `cat "$OLLAMA_LOG"` (e.g. `/mnt/parscratch/users/$USER/ollama/server.<job-id>.log`). |
 
 ---
 

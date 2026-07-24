@@ -44,8 +44,12 @@ if ! apptainer exec --nv "$OLLAMA_SIF" nvidia-smi >/dev/null 2>&1; then
   echo "         Continuing on CPU -- this will be very slow." >&2
 fi
 
+# Scope the log by job id (or PID outside a SLURM job) so concurrent
+# interactive sessions/batch jobs don't clobber each other's log.
+export OLLAMA_LOG="$OLLAMA_DIR/server.${SLURM_JOB_ID:-$$}.log"
+
 echo "==> Starting Ollama server (model: $MODEL) ..."
-_ollama serve >"$OLLAMA_DIR/server.log" 2>&1 &
+_ollama serve >"$OLLAMA_LOG" 2>&1 &
 export OLLAMA_SERVER_PID=$!
 
 echo -n "==> Waiting for server to be ready"
@@ -57,7 +61,7 @@ for _ in $(seq 1 60); do
 done
 echo
 if [[ "$_ready" != "1" ]]; then
-  echo "ERROR: server did not start. See $OLLAMA_DIR/server.log" >&2
+  echo "ERROR: server did not start. See $OLLAMA_LOG" >&2
   return 1 2>/dev/null || exit 1
 fi
 
@@ -69,3 +73,4 @@ echo "==> Ready. The API is at http://$OLLAMA_HOST"
 echo "    chat                 # interactive chat with $MODEL"
 echo '    chat "your prompt"   # single prompt'
 echo "    stop_ollama          # stop the server when you are done"
+echo "    Log: $OLLAMA_LOG"
