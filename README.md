@@ -40,8 +40,9 @@ handles all of that so you can get from *"I have a Stanage account"* to
 >   reach your Ollama server with no credentials required.
 >
 > Don't run anything sensitive or confidential through this setup as
-> configured. If that matters for your use case, check with Research
-> Computing about node exclusivity and SSH access policy on Stanage before
+> configured. If that matters for your use case, check with [Research
+> Computing Support](https://docs.hpc.shef.ac.uk/en/latest/help.html#gsc.tab=0)
+> about node exclusivity and SSH access policy on Stanage before
 > relying on `127.0.0.1` binding for isolation.
 
 ## Prerequisites
