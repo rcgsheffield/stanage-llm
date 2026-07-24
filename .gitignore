@@ -1,0 +1,11 @@
+# Container images and model weights live on fastdata, never in the repo.
+*.sif
+
+# Logs and outputs
+*.log
+*.out
+results*.jsonl
+
+# Python
+__pycache__/
+*.pyc
