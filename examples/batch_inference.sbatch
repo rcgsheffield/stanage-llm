@@ -21,7 +21,11 @@
 #SBATCH --cpus-per-task=8
 #SBATCH --mem=82G                   # ~ one A100's worth of host RAM
 #SBATCH --time=01:00:00             # batch jobs may run up to 96:00:00
-#SBATCH --output=llm-batch.%j.out   # %j = job id
+# SLURM writes this file itself, before config/env.sh is sourced below, so it
+# can't reference $PARSCRATCH -- SLURM's own %u/%j substitution is used
+# instead to keep it off the 50 GB home quota, alongside everything else this
+# job produces.
+#SBATCH --output=/mnt/parscratch/users/%u/ollama/llm-batch.%j.out
 
 set -euo pipefail
 

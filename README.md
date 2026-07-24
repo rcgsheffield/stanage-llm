@@ -170,7 +170,9 @@ extra installs.
 
 To process a file of prompts unattended, submit the batch job — it requests a
 GPU, runs every prompt in [`examples/prompts.jsonl`](examples/prompts.jsonl)
-through the model, writes answers to fastdata, and exits:
+through the model, writes answers to fastdata, and exits. The SLURM output
+log itself also goes to fastdata (`/mnt/parscratch/users/$USER/ollama/`),
+not the directory you submitted from, to keep it off the home quota:
 
 ```bash
 sbatch examples/batch_inference.sbatch     # from the repo root, on a login node
