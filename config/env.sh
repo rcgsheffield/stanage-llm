@@ -28,9 +28,11 @@ export OLLAMA_SIF="$OLLAMA_DIR/ollama.sif"
 # Keep Apptainer's build/pull cache off home too.
 export APPTAINER_CACHEDIR="$PARSCRATCH/apptainer/cache"
 
-# Address the Ollama server binds to and clients connect to. The default is
-# fine; Apptainer shares the host network, so client and server find each
-# other on localhost.
+# Address the Ollama server binds to and clients connect to. Apptainer
+# shares the host network (no container network isolation), so client and
+# server find each other on localhost — but that's about discovery, not
+# security: it does NOT make the API private to your job. See "Security" in
+# README.md before relying on this for anything sensitive.
 export OLLAMA_HOST="${OLLAMA_HOST:-127.0.0.1:11434}"
 
 # --- Which model to run -----------------------------------------------------
