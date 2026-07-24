@@ -1,5 +1,7 @@
 # Run an open-weight LLM on Stanage
 
+[![ShellCheck](https://github.com/rcgsheffield/stanage-llm/actions/workflows/shellcheck.yml/badge.svg)](https://github.com/rcgsheffield/stanage-llm/actions/workflows/shellcheck.yml)
+
 A minimal, copy-paste example for running open-weight large language models
 (Llama, Qwen, Mistral, gpt-oss, …) on the University of Sheffield's
 **[Stanage](https://docs.hpc.shef.ac.uk/en/latest/stanage/index.html)** HPC
