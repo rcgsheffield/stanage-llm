@@ -1,3 +1,4 @@
+# shellcheck shell=bash
 # Start the Ollama server inside the container, on a GPU node.
 #
 # Run this INSIDE an interactive GPU session, and SOURCE it (don't execute it)
