@@ -5,7 +5,7 @@ Reads records like {"id": "1", "prompt": "..."} and writes
 {"id": "1", "prompt": "...", "response": "..."} for each.
 
 Usage:
-    python examples/batch_infer.py INPUT.jsonl OUTPUT.jsonl
+    python3 examples/batch_infer.py INPUT.jsonl OUTPUT.jsonl
 
 Model and server address come from the environment (MODEL, OLLAMA_HOST),
 set by config/env.sh. Uses the `openai` client if available, otherwise the
@@ -45,7 +45,7 @@ def ask(prompt: str) -> str:
 
 def main() -> int:
     if len(sys.argv) != 3:
-        print(f"Usage: python {sys.argv[0]} INPUT.jsonl OUTPUT.jsonl", file=sys.stderr)
+        print(f"Usage: python3 {sys.argv[0]} INPUT.jsonl OUTPUT.jsonl", file=sys.stderr)
         return 1
     in_path, out_path = sys.argv[1], sys.argv[2]
 

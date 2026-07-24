@@ -161,7 +161,7 @@ existing code using the `openai` client works with only a changed `base_url`
 protect against). Inside the GPU session, after `source scripts/start_ollama.sh`:
 
 ```bash
-python examples/query_api.py "Draft a one-line commit message for a bug fix."
+python3 examples/query_api.py "Draft a one-line commit message for a bug fix."
 ```
 
 [`query_api.py`](examples/query_api.py) uses the `openai` client if it is

@@ -40,7 +40,7 @@ source scripts/start_ollama.sh
 
 # Run inference. Results go to fastdata, keyed by job id so runs don't clobber.
 OUT="$OLLAMA_DIR/results.$SLURM_JOB_ID.jsonl"
-python examples/batch_infer.py examples/prompts.jsonl "$OUT"
+python3 examples/batch_infer.py examples/prompts.jsonl "$OUT"
 
 # Always stop the server so the node is left clean.
 stop_ollama

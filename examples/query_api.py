@@ -8,7 +8,7 @@ via the standard library -- so it works with zero extra installs.
 
 Usage (inside the GPU session, after `source scripts/start_ollama.sh`):
 
-    python examples/query_api.py "Explain diffusion models in two sentences."
+    python3 examples/query_api.py "Explain diffusion models in two sentences."
 
 The model and server address are read from the environment (set by
 config/env.sh): MODEL and OLLAMA_HOST.
@@ -58,7 +58,7 @@ def ask(prompt: str) -> str:
 
 def main() -> int:
     if len(sys.argv) < 2:
-        print(f'Usage: python {sys.argv[0]} "your prompt"', file=sys.stderr)
+        print(f'Usage: python3 {sys.argv[0]} "your prompt"', file=sys.stderr)
         return 1
     prompt = " ".join(sys.argv[1:])
     print(ask(prompt))
