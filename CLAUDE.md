@@ -45,3 +45,19 @@ change:
   and shell functions (`chat`, `stop_ollama`) into the calling shell.
 - Model choice flows through `MODEL`, set in `config/env.sh` or overridden via
   env var — don't hardcode a model name in a script.
+
+## Releases
+
+Versioning and the CHANGELOG are automated by
+[release-please](https://github.com/googleapis/release-please) (see
+`.github/workflows/release.yml`, `release-please-config.json`,
+`.release-please-manifest.json`). It only detects version bumps from
+[Conventional Commits](https://www.conventionalcommits.org/) — prefix commit
+messages / PR titles with `feat:` or `fix:` to trigger a release, `chore:`,
+`docs:`, `refactor:` etc. for changes that shouldn't bump the version.
+
+On push to `main`, release-please opens/updates a `chore(main): release
+x.y.z` PR with the changelog. Merging that PR tags a GitHub Release, which
+triggers `.github/workflows/release-to-orda.yml` to archive the release
+tarball to ORDA (Figshare) via the `FIGSHARE_ARTICLE_ID` repo variable and
+`FIGSHARE_TOKEN` secret.
