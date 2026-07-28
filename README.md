@@ -275,6 +275,31 @@ See [Filestores](https://docs.hpc.shef.ac.uk/en/latest/hpc/filestore.html) for
 the full picture, including quotas and backup policy for areas this repo
 doesn't touch.
 
+## Citing this repository
+
+Please cite this repository using the metadata in
+[`CITATION.cff`](CITATION.cff) (GitHub renders a "Cite this repository"
+button on the repo homepage from this file).
+
+Tagged GitHub releases are also archived to the University of Sheffield's
+[ORDA](https://orda.shef.ac.uk) repository via
+`.github/workflows/release-to-orda.yml`, which assigns each release a
+citable DOI. This follows the
+[RSE-Sheffield/release_to_ORDA](https://github.com/RSE-Sheffield/release_to_ORDA)
+pattern. One-time setup by a repo maintainer is required before this works:
+
+1. Create an article on [ORDA](https://orda.shef.ac.uk) with metadata but no
+   files, and note its numeric article ID from the DOI (e.g. `17113328` from
+   `10.15131/shef.data.17113328`).
+2. Generate a Figshare personal access token.
+3. In the repo's GitHub Settings, add secret `FIGSHARE_TOKEN` and variable
+   `FIGSHARE_ARTICLE_ID`.
+4. Cut a GitHub release — the workflow downloads the release archive and
+   uploads it to the ORDA article automatically.
+
+Once ORDA assigns a DOI, add it to `CITATION.cff` (`identifiers:`/`doi:`)
+and this README.
+
 ## Reference documentation
 
 - [Using GPUs on Stanage](https://docs.hpc.shef.ac.uk/en/latest/stanage/GPUComputingStanage.html)
