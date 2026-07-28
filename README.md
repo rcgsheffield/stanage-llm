@@ -14,6 +14,13 @@ GPUs, containers, where multi-GB weights are allowed to live). This repo
 handles all of that so you can get from *"I have a Stanage account"* to
 *"I'm chatting with a model on an A100"* in about five commands.
 
+> [!CAUTION]
+> **Do not put sensitive or confidential data through this setup.** It is an
+> example for getting started, not a secure processing environment: the model
+> API has no authentication, and your prompts and outputs are written in
+> plaintext to shared storage. Keep to non-sensitive, non-personal data —
+> see [Security](#security) for the details and what to do if you need more.
+
 ## Why this approach
 
 - **Ollama** is the simplest way to run a model: one program, it downloads
@@ -24,6 +31,41 @@ handles all of that so you can get from *"I have a Stanage account"* to
   runtime, and Ollama.
 
 ## Security
+
+### What data is this suitable for?
+
+Only data you would be comfortable with another Stanage user seeing. In
+practice that means public, synthetic, or otherwise non-sensitive material:
+open datasets, published text, your own draft writing, code you're happy to
+share.
+
+**Do not use these scripts for:**
+
+- personal data / anything identifying a living individual (UK GDPR),
+- clinical, patient, or participant data,
+- commercially confidential or contractually restricted data (e.g. industry
+  partner data, data under an NDA or a data sharing agreement),
+- anything classified as *Confidential* or *Restricted* under the
+  University's [information security
+  policy](https://www.sheffield.ac.uk/it-services/policies),
+- exam material, unpublished assessments, or HR/staff records.
+
+Two independent reasons, both explained below:
+
+1. **The model API is unauthenticated**, and "localhost" does not mean
+   "private to your job" on a shared node.
+2. **Prompts and outputs land in plaintext on shared storage** — the server
+   log (`$OLLAMA_DIR/server.*.log`) and, for batch jobs, the results file
+   (`$OLLAMA_DIR/results.*.jsonl`) both live on fastdata, which has no
+   encryption at rest and no backups. Nothing here deletes them for you.
+
+If your work genuinely needs a locally-hosted LLM over restricted data, treat
+that as a separate design problem and talk to [Research Computing
+Support](https://docs.hpc.shef.ac.uk/en/latest/help.html#gsc.tab=0) and your
+faculty's information governance contact **before** running anything. Don't
+assume this repo can be made adequate by tweaking a variable.
+
+### Why the API isn't private
 
 > [!WARNING]
 > Ollama's API has **no authentication** — anyone who can reach the port can
@@ -42,11 +84,10 @@ handles all of that so you can get from *"I have a Stanage account"* to
 > - Either way, anyone who can reach that node's loopback interface can
 >   reach your Ollama server with no credentials required.
 >
-> Don't run anything sensitive or confidential through this setup as
-> configured. If that matters for your use case, check with [Research
-> Computing Support](https://docs.hpc.shef.ac.uk/en/latest/help.html#gsc.tab=0)
-> about node exclusivity and SSH access policy on Stanage before
-> relying on `127.0.0.1` binding for isolation.
+> Never treat `127.0.0.1` binding as isolation. If you need to understand the
+> exact exposure on Stanage, ask [Research Computing
+> Support](https://docs.hpc.shef.ac.uk/en/latest/help.html#gsc.tab=0) about
+> node exclusivity and the SSH access policy.
 >
 > `start_ollama.sh` and `00_setup.sh` enforce this: if `OLLAMA_HOST` is
 > overridden away from `127.0.0.1`/`localhost`/`::1`, they print a warning and
@@ -295,6 +336,11 @@ uses two of them.
 | --- | --- | --- | --- |
 | Fastdata | `/mnt/parscratch/users/$USER` | Container image, model weights, server logs, batch job output/results | No quota, no backups. Fast (Lustre) and readable from both login and GPU nodes — the only area both need to see the same files. Not tuned for lots of small files, so don't dump unrelated small-file workloads here. |
 | Home | `~` (`/users/$USER`) | This git checkout only | Capped at **50 GB**, not backed up. Everything large is deliberately kept out (see `config/env.sh`) so cloning this repo never risks the quota. |
+
+Neither area is encrypted at rest or backed up, and your prompts and model
+outputs are written there in plaintext (`server.*.log`, `results.*.jsonl`) —
+another reason not to run sensitive or confidential data through this setup.
+See [What data is this suitable for?](#what-data-is-this-suitable-for) above.
 
 See [Filestores](https://docs.hpc.shef.ac.uk/en/latest/hpc/filestore.html) for
 the full picture, including quotas and backup policy for areas this repo
