@@ -83,8 +83,12 @@ weaknesses, both explained below:
 2. **Your data lands in plaintext on shared storage** — for batch jobs the
    results file (`$OLLAMA_DIR/results.*.jsonl`) contains every prompt and
    completion verbatim, and the server log (`$OLLAMA_DIR/server.*.log`)
-   records the requests you made. Both live on fastdata, which has no
-   encryption at rest and no backups. Nothing here deletes them for you.
+   records the requests you made. Both live on fastdata, which is visible to
+   every user on the cluster and has no encryption at rest and no backups.
+   Directory permissions are the only thing keeping them to yourself — see
+   [Who else can see my models and
+   prompts?](#who-else-can-see-my-models-and-prompts) below. Nothing here
+   deletes them for you.
 
 If your work genuinely needs to process restricted data, use a service built
 for it rather than adapting this one — the University's [Secure Data
@@ -95,6 +99,89 @@ Computing
 Support](https://docs.hpc.shef.ac.uk/en/latest/help.html#gsc.tab=0) and your
 faculty's information governance contact **before** running anything. Don't
 assume this repo can be made adequate by tweaking a variable.
+
+### Who else can see my models and prompts?
+
+**Short answer: your files go in a per-user directory on a filesystem shared by
+the whole cluster, and the setup script now makes that directory private
+(mode `700`) when it creates it. If your directory already existed, you may
+need to fix it yourself — see below.**
+
+The longer answer, because "shared" means two different things here:
+
+- **`/mnt/parscratch` is a cluster-wide filesystem.** It's a single Lustre
+  filesystem mounted on the login node and every worker node, and every Stanage
+  user's data sits on it. That's not incidental — it's *why* this repo uses it:
+  the login node (which downloads the model) and the GPU node (which runs it)
+  have to see the same files.
+- **Your own subdirectory, `/mnt/parscratch/users/$USER`, is yours** — but it
+  isn't private automatically. The Stanage docs note that this directory
+  [doesn't exist by
+  default](https://docs.hpc.shef.ac.uk/en/latest/hpc/filestore.html#fastdata-areas)
+  and should be created as mode `700`, "only be accessible to you". Created
+  under the usual default umask instead, it comes out mode `755` — **readable
+  by every other user on the cluster.**
+
+This matters more than "someone can see my model weights" (they're public
+downloads anyway). The same directory holds your **prompts and completions in
+plaintext**: `server.*.log` records every API request, and for batch jobs
+`results.*.jsonl` contains every prompt and its completion verbatim.
+
+#### What the scripts do about it
+
+`scripts/00_setup.sh` creates each level of the fastdata area as mode `700`, and
+sets `umask 077` so the files it writes are `600`. Because a directory can only
+be traversed by someone holding its `x` bit, a `700` directory keeps everything
+inside it private regardless of the individual file modes — which is the only
+thing protecting a batch job's `--output` file, since SLURM opens that before
+any of this repo's code runs.
+
+**Directories that already exist are never modified.** A `755` area may be the
+[public/private
+layout](https://docs.hpc.shef.ac.uk/en/latest/hpc/filestore.html#fastdata-areas)
+the Stanage docs also describe, and silently tightening a directory you chose to
+share would break it. Instead, `00_setup.sh` and `start_ollama.sh` warn:
+
+```
+WARNING: /mnt/parscratch/users/me/ollama is mode 755 -- readable by other users.
+```
+
+To fix it, either run the `chmod` the warning prints, or re-run setup with the
+opt-in flag:
+
+```bash
+STANAGE_FIX_PERMS=1 bash scripts/00_setup.sh
+```
+
+Check the result yourself at any point:
+
+```bash
+ls -ld /mnt/parscratch/users/$USER /mnt/parscratch/users/$USER/ollama
+# want: drwx------
+```
+
+| Variable | Effect |
+| --- | --- |
+| `STANAGE_FIX_PERMS=1` | Make `00_setup.sh` strip group/other access under `$OLLAMA_DIR` and the Apptainer cache. Off by default. |
+| `STANAGE_ALLOW_OPEN_FASTDATA=1` | Silence the permissions warning (e.g. you *intend* the area to be shared). |
+
+For batch jobs, submit with `umask 077 && sbatch examples/batch_inference.sbatch`
+if you want SLURM's own `llm-batch.*.out` file to be mode `600` too — the
+`umask` inside the script can't affect a file SLURM has already opened.
+
+#### What this does *not* fix
+
+> [!IMPORTANT]
+> Private directory permissions keep out **other unprivileged users**. They do
+> nothing about system administrators or root, they don't encrypt anything at
+> rest, they don't give you backups, and they can't un-share data someone
+> already copied while the directory was open. Most importantly, they do **not**
+> make this setup suitable for restricted or sensitive data — the [cluster-wide
+> prohibition](#security) applies regardless of how you set your file modes.
+>
+> The checks read mode bits only. A POSIX ACL can grant access that `ls -ld`
+> doesn't show, so if you have ever used `setfacl` here, verify with
+> `getfacl /mnt/parscratch/users/$USER`.
 
 ### Why the API isn't private
 
@@ -342,6 +429,7 @@ SLURM resource request you'd adapt for larger runs (batch jobs may run up to
 | First response is slow, then fast | Normal — the weights load from Lustre into VRAM on first use. |
 | Home quota full | Confirm `OLLAMA_MODELS` points at `/mnt/parscratch/...` (it does by default). Never let Ollama write to `~/.ollama`. |
 | Server won't start | Check the log printed at startup: `cat "$OLLAMA_LOG"` (e.g. `/mnt/parscratch/users/$USER/ollama/server.<job-id>.log`). |
+| `WARNING: ... is mode 755 -- readable by other users` | Your fastdata area was created before this check existed, so other users can read your prompts and logs. Run the `chmod` the warning prints, or `STANAGE_FIX_PERMS=1 bash scripts/00_setup.sh`. See [Who else can see my models and prompts?](#who-else-can-see-my-models-and-prompts). |
 
 ---
 
@@ -365,14 +453,15 @@ uses two of them.
 
 | Area | Path | Used for | Notes |
 | --- | --- | --- | --- |
-| Fastdata | `/mnt/parscratch/users/$USER` | Container image, model weights, server logs, batch job output/results | No quota, no backups. Fast (Lustre) and readable from both login and GPU nodes — the only area both need to see the same files. Not tuned for lots of small files, so don't dump unrelated small-file workloads here. |
+| Fastdata | `/mnt/parscratch/users/$USER` | Container image, model weights, server logs, batch job output/results | No quota, no backups. Fast (Lustre) and readable from both login and GPU nodes — the only area both need to see the same files. **A per-user directory on a cluster-wide filesystem: private only because `00_setup.sh` creates it mode `700`** ([details](#who-else-can-see-my-models-and-prompts)). Not tuned for lots of small files, so don't dump unrelated small-file workloads here. |
 | Home | `~` (`/users/$USER`) | This git checkout only | Capped at **50 GB**, not backed up. Everything large is deliberately kept out (see `config/env.sh`) so cloning this repo never risks the quota. |
 
 Neither area is encrypted at rest or backed up, and everything this repo writes
 to fastdata is plaintext — including the server log (`server.*.log`) and, for
 batch jobs, every prompt and completion (`results.*.jsonl`) — another reason not
-to run sensitive or confidential data through this setup. See [The cluster-wide
-rule comes first](#the-cluster-wide-rule-comes-first) above.
+to run sensitive or confidential data through this setup. See
+[Security](#security) above, and [Who else can see my models and
+prompts?](#who-else-can-see-my-models-and-prompts) for who can read these files.
 
 If you bind-mount a shared project directory into a job here, the same rule
 applies to that area: it must not contain restricted or sensitive data, now or

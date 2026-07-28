@@ -40,7 +40,51 @@ if [[ ! -d /mnt/parscratch ]]; then
   exit 1
 fi
 
-mkdir -p "$OLLAMA_MODELS" "$APPTAINER_CACHEDIR"
+# --- Create the fastdata area, privately ------------------------------------
+# Everything below is written to fastdata, a cluster-wide filesystem. The
+# default umask (0022) would make those files world-readable, and we
+# deliberately don't chmod a directory you already created (see the loop
+# below), so in that case the file mode is the only protection left. Safe to
+# set globally here: this script is executed, not sourced.
+umask 077
+
+# The Stanage docs create /mnt/parscratch/users/$USER as mode 700 ("your area
+# will only be accessible to you") but nothing does it for you. Create each
+# level we own as 700 -- note `mkdir -p -m 700 a/b/c` applies the mode only to
+# the deepest component and leaves the parents at the umask default, so create
+# one level at a time instead.
+#
+# Directories that ALREADY exist are left untouched: a 755 area may be the
+# public/ + private/ layout the Stanage docs also describe, and silently
+# tightening a directory you chose to share would break it.
+# _check_fastdata_perms (below) warns about them instead.
+for _dir in "$PARSCRATCH" "$OLLAMA_DIR" "$OLLAMA_MODELS" \
+            "$PARSCRATCH/apptainer" "$APPTAINER_CACHEDIR"; do
+  if [[ ! -d "$_dir" ]]; then
+    # Tolerate a concurrent create (another job racing us) rather than dying.
+    mkdir -m 700 "$_dir" 2>/dev/null || [[ -d "$_dir" ]] || {
+      echo "ERROR: could not create $_dir" >&2
+      exit 1
+    }
+  fi
+done
+unset _dir
+
+# Opt-in remediation for an area created world-readable by an earlier version
+# of this script (or by hand). Off by default: a setup script shouldn't
+# chmod -R someone's multi-GB model tree unasked, and we can't tell a leftover
+# 0022 default from a directory you deliberately shared. Scoped to what this
+# repo creates -- the mode of $PARSCRATCH itself is your call, and $OLLAMA_DIR
+# at 700 already blocks traversal to everything inside it. 'go-rwx' rather
+# than 700 so directories keep their owner 'x' bit.
+if [[ "${STANAGE_FIX_PERMS:-0}" == "1" ]]; then
+  echo "==> STANAGE_FIX_PERMS=1: removing group/other access under $OLLAMA_DIR"
+  chmod -R go-rwx "$OLLAMA_DIR" "$PARSCRATCH/apptainer"
+fi
+
+# Run last, so a clean first install prints nothing and STANAGE_FIX_PERMS=1
+# silences its own warning within the same invocation.
+_check_fastdata_perms
 
 # --- 1. Pull the container image (skip if already present) ------------------
 if [[ -f "$OLLAMA_SIF" ]]; then

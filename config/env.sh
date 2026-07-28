@@ -98,6 +98,61 @@ _check_ollama_host_loopback() {
   return 1
 }
 
+# Warn -- never change anything -- if the fastdata directories holding your
+# prompts, completions and server logs are reachable by other users. Fastdata
+# is a cluster-wide filesystem, so directory permissions are the only thing
+# keeping your files to yourself. See "Who else can see my models and
+# prompts?" in README.md.
+#
+# Unlike the loopback check above this only WARNS and always succeeds: an open
+# area can be deliberate (the Stanage docs describe a 755 top-level area with
+# public/ and private/ subdirectories), and aborting a running job over it
+# would be worse than the warning. Silence it with
+# STANAGE_ALLOW_OPEN_FASTDATA=1.
+#
+# Mode bits only: a POSIX ACL can grant access that `stat -c %a` doesn't show,
+# so treat a silent result as a floor, not a guarantee -- `getfacl` is the
+# authoritative check. Called by 00_setup.sh and start_ollama.sh.
+_check_fastdata_perms() {
+  [[ "${STANAGE_ALLOW_OPEN_FASTDATA:-0}" == "1" ]] && return 0
+
+  local mode bad=0
+
+  # Confidentiality. Denying other users the 'x' (search) bit on $OLLAMA_DIR
+  # is what makes the modes of the files inside it irrelevant -- a path can
+  # only be resolved if every component along it is searchable. So any
+  # group/other bit here matters, and 8#77 catches all of them.
+  if [[ -d "$OLLAMA_DIR" ]] &&
+     mode="$(stat -c %a "$OLLAMA_DIR" 2>/dev/null)" &&
+     [[ "$mode" =~ ^[0-7]+$ ]] && (( 8#$mode & 8#77 )); then
+    echo "WARNING: $OLLAMA_DIR is mode $mode -- readable by other users." >&2
+    echo "         The server log and any batch results kept there contain" >&2
+    echo "         your prompts and completions in plaintext. Make it" >&2
+    echo "         private with:" >&2
+    echo "           chmod 700 '$OLLAMA_DIR' && chmod -R go-rwx '$OLLAMA_DIR'" >&2
+    echo "         or re-run 'STANAGE_FIX_PERMS=1 bash scripts/00_setup.sh'." >&2
+    echo "         That stops FUTURE reads only -- it cannot un-share" >&2
+    echo "         anything another user has already copied." >&2
+    bad=1
+  fi
+
+  # Integrity. A group/other-WRITABLE parent lets another user rename or
+  # replace directories inside it even when they cannot read them, because
+  # rename() needs only write+search on the parent.
+  if [[ -d "$PARSCRATCH" ]] &&
+     mode="$(stat -c %a "$PARSCRATCH" 2>/dev/null)" &&
+     [[ "$mode" =~ ^[0-7]+$ ]] && (( 8#$mode & 8#22 )); then
+    echo "WARNING: $PARSCRATCH is mode $mode -- writable by other users, who" >&2
+    echo "         could rename or replace directories inside it." >&2
+    bad=1
+  fi
+
+  if (( bad )); then
+    echo "         Silence this check with STANAGE_ALLOW_OPEN_FASTDATA=1." >&2
+  fi
+  return 0
+}
+
 # --- Idle auto-quit ---------------------------------------------------------
 # Minutes of no Ollama API activity before start_ollama.sh's watchdog stops
 # the server and (if running under SLURM) cancels the job, freeing the GPU
