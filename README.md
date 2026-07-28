@@ -102,24 +102,24 @@ already done.
 ### 3. Grab a GPU
 
 ```bash
-srun --partition=gpu --qos=gpu --gres=gpu:1 --mem=82G --time=08:00:00 --pty bash
+srun --partition=gpu --qos=gpu --gres=gpu:1 --mem=8G --time=00:30:00 --pty bash
 ```
 
 This drops you into an [interactive shell](https://docs.hpc.shef.ac.uk/en/latest/hpc/scheduler/index.html#types-of-job) on a [GPU node](https://docs.hpc.shef.ac.uk/en/latest/stanage/GPUComputingStanage.html#gsc.tab=0) with one **A100 (80 GB)**.
 For the newer **H100** nodes use `--partition=gpu-h100` instead. Interactive
 sessions can run for up to **8 hours**. `--qos=gpu` is required.
 
-`--mem=82G --time=08:00:00` is sized for the largest model in the table below
-(`llama3.3:70b`) and a full working session — it's more than a quick test
-needs. Bigger requests queue longer (see [Selecting resources](#selecting-resources)
-below), so scale `--mem` and `--time` to the model you're actually running:
+`--mem=8G --time=00:30:00` is sized for the tiny default model
+(`gemma3:270m`) — enough for a quick smoke test. Bigger requests queue longer
+(see [Selecting resources](#selecting-resources) below), so scale `--mem` and
+`--time` to the model you're actually running:
 
 ```bash
-# Quick smoke test with the tiny default model
-srun --partition=gpu --qos=gpu --gres=gpu:1 --mem=8G --time=00:30:00 --pty bash
-
 # A 8B-14B model for interactive chat
 srun --partition=gpu --qos=gpu --gres=gpu:1 --mem=24G --time=02:00:00 --pty bash
+
+# The largest model in the table below (llama3.3:70b), full working session
+srun --partition=gpu --qos=gpu --gres=gpu:1 --mem=82G --time=08:00:00 --pty bash
 ```
 
 ### 4. Start the model and chat
@@ -134,6 +134,30 @@ chat "Explain PCA in two sentences."   # or a one-off prompt
 
 `source` (not `bash`) matters — it starts the server in your shell and gives
 you the `chat` and `stop_ollama` helpers.
+
+> [!IMPORTANT]
+> GPUs on Stanage are a shared, limited, and heavily contended resource — an
+> idle interactive session still blocks other researchers' jobs from that GPU
+> for your whole walltime, even if you've stopped using it. Don't hold one
+> open "just in case" or leave a chat session running unattended without an
+> active research purpose; request only the time you need (see [Selecting
+> resources](#selecting-resources) below) and stop or exit as soon as you're
+> done. See Stanage's [Choosing appropriate
+> resources](https://docs.hpc.shef.ac.uk/en/latest/hpc/Choosing-appropriate-resources.html#gsc.tab=0)
+> guidance for the general principle.
+
+Forgetting to stop the server (or just walking away) keeps the GPU reserved
+for the rest of your walltime. `OLLAMA_IDLE_TIMEOUT` (minutes, default `60`)
+auto-quits after that long with no API activity — it stops the server and,
+if you're in a SLURM job, cancels it too so the GPU goes back to the
+scheduler. This is a safety net, not a substitute for stopping the session
+yourself when you're done. Set it to `0` to disable, or override the
+duration:
+
+```bash
+OLLAMA_IDLE_TIMEOUT=0  source scripts/start_ollama.sh   # disable
+OLLAMA_IDLE_TIMEOUT=30 source scripts/start_ollama.sh   # override duration
+```
 
 ### 5. Finish up
 

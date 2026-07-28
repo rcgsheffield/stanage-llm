@@ -97,6 +97,13 @@ _check_ollama_host_loopback() {
   return 1
 }
 
+# --- Idle auto-quit ---------------------------------------------------------
+# Minutes of no Ollama API activity before start_ollama.sh's watchdog stops
+# the server and (if running under SLURM) cancels the job, freeing the GPU
+# for other users. On by default (60 min) so idle sessions don't hog shared
+# GPUs; set to 0 to disable.
+export OLLAMA_IDLE_TIMEOUT="${OLLAMA_IDLE_TIMEOUT:-60}"
+
 # --- Which model to run -----------------------------------------------------
 # See the "Choosing a model" table in README.md. gemma3:270m is a tiny,
 # near-instant default (~300 MB) good for smoke-testing the setup before
