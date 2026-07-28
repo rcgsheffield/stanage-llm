@@ -16,7 +16,7 @@ handles all of that so you can get from *"I have a Stanage account"* to
 
 > [!CAUTION]
 > **The HPC service must not be used to store or process any restricted or
-> sensitive data.** This is a rule for Stanage and Bessemer as a whole, not
+> sensitive data.** This is a rule for Stanage as a whole, not
 > just for this repo — no configuration of these scripts, or of anything else
 > on the clusters, makes sensitive data acceptable here. Keep to
 > non-sensitive, non-personal data — see [Security](#security) for the details
