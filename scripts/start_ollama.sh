@@ -95,11 +95,12 @@ fi
 chat() { _ollama run "$MODEL" "$@"; }
 stop_ollama() { bash "$_STANAGE_ROOT/scripts/stop_ollama.sh"; }
 
-# Opt-in idle watchdog: if nothing has hit the Ollama API for
-# $OLLAMA_IDLE_TIMEOUT minutes, stop the server and (under SLURM) cancel the
-# job so the GPU is released even if the user walked away. $OLLAMA_LOG's
-# mtime is used as the activity signal -- the server logs every API request
-# it handles, so a stale log means an idle session.
+# Idle watchdog (on by default, opt out with OLLAMA_IDLE_TIMEOUT=0): if
+# nothing has hit the Ollama API for $OLLAMA_IDLE_TIMEOUT minutes, stop the
+# server and (under SLURM) cancel the job so the GPU is released even if the
+# user walked away. $OLLAMA_LOG's mtime is used as the activity signal -- the
+# server logs every API request it handles, so a stale log means an idle
+# session.
 _start_idle_watchdog() {
   local timeout_s=$(( OLLAMA_IDLE_TIMEOUT * 60 ))
   (

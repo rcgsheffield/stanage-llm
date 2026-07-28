@@ -147,14 +147,16 @@ you the `chat` and `stop_ollama` helpers.
 > guidance for the general principle.
 
 Forgetting to stop the server (or just walking away) keeps the GPU reserved
-for the rest of your walltime. Set `OLLAMA_IDLE_TIMEOUT` (minutes, default
-`0` = off) to auto-quit after that long with no API activity — it stops the
-server and, if you're in a SLURM job, cancels it too so the GPU goes back to
-the scheduler. This is a safety net, not a substitute for stopping the
-session yourself when you're done:
+for the rest of your walltime. `OLLAMA_IDLE_TIMEOUT` (minutes, default `60`)
+auto-quits after that long with no API activity — it stops the server and,
+if you're in a SLURM job, cancels it too so the GPU goes back to the
+scheduler. This is a safety net, not a substitute for stopping the session
+yourself when you're done. Set it to `0` to disable, or override the
+duration:
 
 ```bash
-OLLAMA_IDLE_TIMEOUT=60 source scripts/start_ollama.sh
+OLLAMA_IDLE_TIMEOUT=0  source scripts/start_ollama.sh   # disable
+OLLAMA_IDLE_TIMEOUT=30 source scripts/start_ollama.sh   # override duration
 ```
 
 ### 5. Finish up
