@@ -102,24 +102,24 @@ already done.
 ### 3. Grab a GPU
 
 ```bash
-srun --partition=gpu --qos=gpu --gres=gpu:1 --mem=82G --time=08:00:00 --pty bash
+srun --partition=gpu --qos=gpu --gres=gpu:1 --mem=8G --time=00:30:00 --pty bash
 ```
 
 This drops you into an [interactive shell](https://docs.hpc.shef.ac.uk/en/latest/hpc/scheduler/index.html#types-of-job) on a [GPU node](https://docs.hpc.shef.ac.uk/en/latest/stanage/GPUComputingStanage.html#gsc.tab=0) with one **A100 (80 GB)**.
 For the newer **H100** nodes use `--partition=gpu-h100` instead. Interactive
 sessions can run for up to **8 hours**. `--qos=gpu` is required.
 
-`--mem=82G --time=08:00:00` is sized for the largest model in the table below
-(`llama3.3:70b`) and a full working session — it's more than a quick test
-needs. Bigger requests queue longer (see [Selecting resources](#selecting-resources)
-below), so scale `--mem` and `--time` to the model you're actually running:
+`--mem=8G --time=00:30:00` is sized for the tiny default model
+(`gemma3:270m`) — enough for a quick smoke test. Bigger requests queue longer
+(see [Selecting resources](#selecting-resources) below), so scale `--mem` and
+`--time` to the model you're actually running:
 
 ```bash
-# Quick smoke test with the tiny default model
-srun --partition=gpu --qos=gpu --gres=gpu:1 --mem=8G --time=00:30:00 --pty bash
-
 # A 8B-14B model for interactive chat
 srun --partition=gpu --qos=gpu --gres=gpu:1 --mem=24G --time=02:00:00 --pty bash
+
+# The largest model in the table below (llama3.3:70b), full working session
+srun --partition=gpu --qos=gpu --gres=gpu:1 --mem=82G --time=08:00:00 --pty bash
 ```
 
 ### 4. Start the model and chat
