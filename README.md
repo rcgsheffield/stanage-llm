@@ -45,10 +45,14 @@ share.
 - clinical, patient, or participant data,
 - commercially confidential or contractually restricted data (e.g. industry
   partner data, data under an NDA or a data sharing agreement),
-- anything classified as *Confidential* or *Restricted* under the
-  University's [information security
-  policy](https://www.sheffield.ac.uk/it-services/policies),
+- anything the University's [research data security
+  guidance](https://sheffield.ac.uk/library/research-data-management/security)
+  says needs controlled handling,
 - exam material, unpublished assessments, or HR/staff records.
+
+If you're unsure which bucket your data falls into, that guidance is the place
+to start — classify the data *before* you run anything through this setup, not
+after.
 
 Two independent reasons, both explained below:
 
@@ -59,8 +63,12 @@ Two independent reasons, both explained below:
    (`$OLLAMA_DIR/results.*.jsonl`) both live on fastdata, which has no
    encryption at rest and no backups. Nothing here deletes them for you.
 
-If your work genuinely needs a locally-hosted LLM over restricted data, treat
-that as a separate design problem and talk to [Research Computing
+If your work genuinely needs to process restricted data, use a service built
+for it rather than adapting this one — the University's [Secure Data
+Service](https://students.sheffield.ac.uk/it-services/research/secure-data-service)
+is the intended route for sensitive research data. Treat combining that with a
+locally-hosted LLM as a separate design problem, and talk to [Research
+Computing
 Support](https://docs.hpc.shef.ac.uk/en/latest/help.html#gsc.tab=0) and your
 faculty's information governance contact **before** running anything. Don't
 assume this repo can be made adequate by tweaking a variable.
@@ -361,6 +369,8 @@ If this work made use of Stanage, please also acknowledge the HPC service itself
 - [Apptainer/Singularity on Stanage](https://docs.hpc.shef.ac.uk/en/latest/stanage/software/apps/apptainer.html)
 - [Filestores (home / fastdata / scratch)](https://docs.hpc.shef.ac.uk/en/latest/hpc/filestore.html)
 - [Stanage specifications](https://docs.hpc.shef.ac.uk/en/latest/stanage/cluster_specs.html)
+- [Research data security (University of Sheffield)](https://sheffield.ac.uk/library/research-data-management/security)
+- [Secure Data Service — for sensitive research data](https://students.sheffield.ac.uk/it-services/research/secure-data-service)
 
 ---
 
