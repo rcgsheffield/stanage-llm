@@ -129,7 +129,10 @@ echo '    chat "your prompt"   # single prompt'
 echo "    stop_ollama          # stop the server when you are done"
 echo "    Log: $OLLAMA_LOG"
 
-if [[ "${OLLAMA_IDLE_TIMEOUT:-0}" -gt 0 ]]; then
+if [[ ! "${OLLAMA_IDLE_TIMEOUT:-0}" =~ ^[0-9]+$ ]]; then
+  echo "ERROR: OLLAMA_IDLE_TIMEOUT must be a non-negative integer (minutes), got '${OLLAMA_IDLE_TIMEOUT}'." >&2
+  return 1 2>/dev/null || exit 1
+elif [[ "${OLLAMA_IDLE_TIMEOUT:-0}" -gt 0 ]]; then
   _start_idle_watchdog
   echo "    Idle watchdog active: auto-quit after ${OLLAMA_IDLE_TIMEOUT}m with no activity."
 fi
