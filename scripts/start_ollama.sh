@@ -49,12 +49,19 @@ source "$_STANAGE_ROOT/config/env.sh"
 
 _check_ollama_host_loopback || return 1 2>/dev/null || exit 1
 
+# Unique per session/job on this node (SLURM job ID under srun/sbatch, else
+# this shell's own PID). Passed into the container below so stop_ollama.sh
+# can scope its process match to THIS session and never touch another
+# concurrent job's server on a shared node.
+export OLLAMA_STANAGE_TAG="${SLURM_JOB_ID:-$$}"
+
 # The command prefix shared by the server and the client. --nv exposes the
 # GPU; -B mounts fastdata (home is auto-mounted, parscratch is not).
 _ollama() {
   apptainer exec --nv -B /mnt/parscratch \
     --env OLLAMA_MODELS="$OLLAMA_MODELS" \
     --env OLLAMA_HOST="$OLLAMA_HOST" \
+    --env OLLAMA_STANAGE_TAG="$OLLAMA_STANAGE_TAG" \
     "$OLLAMA_SIF" ollama "$@"
 }
 
