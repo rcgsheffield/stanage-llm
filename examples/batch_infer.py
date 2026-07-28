@@ -49,8 +49,15 @@ def main() -> int:
         return 1
     in_path, out_path = sys.argv[1], sys.argv[2]
 
+    # The results file holds every prompt and completion verbatim, and lands on
+    # Stanage's cluster-wide fastdata area. Create it 0600 rather than
+    # inheriting the umask, so it stays private even when this script is run by
+    # hand (outside the sbatch job, which sets umask 077 itself).
+    def private_file(path: str, flags: int) -> int:
+        return os.open(path, flags, 0o600)
+
     error_count = 0
-    with open(in_path) as fin, open(out_path, "w") as fout:
+    with open(in_path) as fin, open(out_path, "w", opener=private_file) as fout:
         for line_num, line in enumerate(fin, start=1):
             line = line.strip()
             if not line:

@@ -49,6 +49,9 @@ source "$_STANAGE_ROOT/config/env.sh"
 
 _check_ollama_host_loopback || return 1 2>/dev/null || exit 1
 
+# Warns only -- see config/env.sh. Never blocks the session.
+_check_fastdata_perms
+
 # The command prefix shared by the server and the client. --nv exposes the
 # GPU; -B mounts fastdata (home is auto-mounted, parscratch is not).
 _ollama() {
@@ -73,6 +76,13 @@ fi
 # Scope the log by job id (or PID outside a SLURM job) so concurrent
 # interactive sessions/batch jobs don't clobber each other's log.
 export OLLAMA_LOG="$OLLAMA_DIR/server.${SLURM_JOB_ID:-$$}.log"
+
+# The server logs every API request it handles, so the log is as sensitive as
+# the prompts you send. Pre-create it 0600 inside a SUBSHELL: this file is
+# sourced, so a bare `umask 077` would persist for the rest of your
+# interactive shell and silently change the mode of everything else you go on
+# to create. The `>` redirect below truncates without altering the mode.
+( umask 077; : >"$OLLAMA_LOG" )
 
 echo "==> Starting Ollama server (model: $MODEL) ..."
 _ollama serve >"$OLLAMA_LOG" 2>&1 &
