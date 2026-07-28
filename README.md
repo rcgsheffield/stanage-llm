@@ -302,28 +302,11 @@ doesn't touch.
 
 ## Citing this repository
 
-Please cite this repository using the metadata in
-[`CITATION.cff`](CITATION.cff) (GitHub renders a "Cite this repository"
-button on the repo homepage from this file), or via its DOI:
-[10.15131/shef.data.33102185](https://doi.org/10.15131/shef.data.33102185).
+Please cite this repository using the metadata in [`CITATION.cff`](CITATION.cff) (GitHub renders a "Cite this repository" button on the repo homepage from this file), or via its DOI: [10.15131/shef.data.33102185](https://doi.org/10.15131/shef.data.33102185).
 
-Tagged GitHub releases are archived to the University of Sheffield's
-[ORDA](https://orda.shef.ac.uk) repository via
-`.github/workflows/release-to-orda.yml`, which uploads each release to the
-ORDA article above. This follows the
-[RSE-Sheffield/release_to_ORDA](https://github.com/RSE-Sheffield/release_to_ORDA)
-pattern. The ORDA article ID is configured as the repo variable
-`FIGSHARE_ARTICLE_ID`; a maintainer still needs to add a `FIGSHARE_TOKEN`
-secret (a Figshare personal access token) before the workflow can upload —
-until then it safely no-ops. Once that's set, cutting a GitHub release
-triggers the upload automatically.
+If this work made use of Stanage, please also acknowledge the HPC service itself, as recommended in the [Stanage citation guidance](https://docs.hpc.shef.ac.uk/en/latest/citing.html#gsc.tab=0):
 
-If this work made use of Stanage, please also acknowledge the HPC service
-itself, as recommended in the
-[Stanage citation guidance](https://docs.hpc.shef.ac.uk/en/latest/citing.html#gsc.tab=0):
-
-> We acknowledge IT Services at The University of Sheffield for the provision
-> of services for High Performance Computing.
+> We acknowledge IT Services at The University of Sheffield for the provision of services for High Performance Computing.
 
 ## Reference documentation
 
