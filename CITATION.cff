@@ -13,3 +13,8 @@ repository-code: "https://github.com/rcgsheffield/stanage-llm"
 url: "https://github.com/rcgsheffield/stanage-llm"
 license: "MIT"
 date-released: "2026-07-24"
+references:
+  - type: generic
+    title: "Citing Stanage"
+    abstract: "Guidance on how to acknowledge use of the University of Sheffield's Stanage HPC cluster in publications."
+    url: "https://docs.hpc.shef.ac.uk/en/latest/citing.html"
