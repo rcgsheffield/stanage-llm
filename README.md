@@ -15,11 +15,12 @@ handles all of that so you can get from *"I have a Stanage account"* to
 *"I'm chatting with a model on an A100"* in about five commands.
 
 > [!CAUTION]
-> **Do not put sensitive or confidential data through this setup.** It is an
-> example for getting started, not a secure processing environment: the model
-> API has no authentication, and your prompts and outputs are written in
-> plaintext to shared storage. Keep to non-sensitive, non-personal data —
-> see [Security](#security) for the details and what to do if you need more.
+> **The HPC service must not be used to store or process any restricted or
+> sensitive data.** This is a rule for Stanage and Bessemer as a whole, not
+> just for this repo — no configuration of these scripts, or of anything else
+> on the clusters, makes sensitive data acceptable here. Keep to
+> non-sensitive, non-personal data — see [Security](#security) for the details
+> and what to do if you need more.
 
 ## Why this approach
 
@@ -31,6 +32,40 @@ handles all of that so you can get from *"I have a Stanage account"* to
   runtime, and Ollama.
 
 ## Security
+
+### The cluster-wide rule comes first
+
+Before any question about this repo, there is a rule about the service itself.
+From the Stanage/Bessemer
+[filestore documentation](https://docs.hpc.shef.ac.uk/en/latest/hpc/filestore.html#shared-project-directories):
+
+> **Danger**
+>
+> The High Performance Computing service must not be used to store or process
+> any restricted or sensitive data. Shared areas with this type of data are not
+> permitted to be made available on the clusters.
+>
+> Research shared storage areas may already contain sensitive data, or may
+> contain sensitive data stored by colleagues you are not aware of. Before
+> requesting an area to be made available on the HPC clusters, you must ensure
+> that they do not and will not contain any sensitive data for the life time of
+> the area.
+
+Two things follow from this that people routinely miss:
+
+- **It is not about this repo.** The prohibition applies to the whole HPC
+  service. The weaknesses described below (unauthenticated API, plaintext logs)
+  are additional reasons to be careful — they are not the reason the rule
+  exists, and fixing them would not make sensitive data permissible.
+- **It covers data you didn't put there.** If you have a shared project or
+  research storage area mounted on the cluster, you are responsible for it
+  containing no sensitive data — including anything a colleague might add
+  later, for as long as the area exists. "I didn't upload anything sensitive"
+  is not sufficient; check with everyone who can write to the area before
+  requesting it be made available, and keep checking.
+
+If in doubt, don't mount it and don't process it — ask [Research Computing
+Support](https://docs.hpc.shef.ac.uk/en/latest/help.html#gsc.tab=0) first.
 
 ### What data is this suitable for?
 
@@ -56,7 +91,8 @@ If you're unsure which bucket your data falls into, classify it against the
 Information Classification scheme *before* you run anything through this setup,
 not after.
 
-Two independent reasons, both explained below:
+On top of the cluster-wide prohibition, this particular setup has two further
+weaknesses, both explained below:
 
 1. **The model API is unauthenticated**, and "localhost" does not mean
    "private to your job" on a shared node.
@@ -350,7 +386,12 @@ uses two of them.
 Neither area is encrypted at rest or backed up, and your prompts and model
 outputs are written there in plaintext (`server.*.log`, `results.*.jsonl`) —
 another reason not to run sensitive or confidential data through this setup.
-See [What data is this suitable for?](#what-data-is-this-suitable-for) above.
+See [The cluster-wide rule comes first](#the-cluster-wide-rule-comes-first)
+above.
+
+If you bind-mount a shared project directory into a job here, the same rule
+applies to that area: it must not contain restricted or sensitive data, now or
+at any point while it is available on the cluster.
 
 See [Filestores](https://docs.hpc.shef.ac.uk/en/latest/hpc/filestore.html) for
 the full picture, including quotas and backup policy for areas this repo
@@ -370,6 +411,7 @@ If this work made use of Stanage, please also acknowledge the HPC service itself
 - [Job submission (SLURM)](https://docs.hpc.shef.ac.uk/en/latest/hpc/scheduler/index.html)
 - [Apptainer/Singularity on Stanage](https://docs.hpc.shef.ac.uk/en/latest/stanage/software/apps/apptainer.html)
 - [Filestores (home / fastdata / scratch)](https://docs.hpc.shef.ac.uk/en/latest/hpc/filestore.html)
+- [Shared project directories — including the restricted/sensitive data prohibition](https://docs.hpc.shef.ac.uk/en/latest/hpc/filestore.html#shared-project-directories)
 - [Stanage specifications](https://docs.hpc.shef.ac.uk/en/latest/stanage/cluster_specs.html)
 - [Information Classification scheme (records management policy and guidance)](https://sheffield.ac.uk/library/records-management-policy-and-guidance)
 - [Research data security (University of Sheffield)](https://sheffield.ac.uk/library/research-data-management/security)
