@@ -294,6 +294,13 @@ secret (a Figshare personal access token) before the workflow can upload —
 until then it safely no-ops. Once that's set, cutting a GitHub release
 triggers the upload automatically.
 
+If this work made use of Stanage, please also acknowledge the HPC service
+itself, as recommended in the
+[Stanage citation guidance](https://docs.hpc.shef.ac.uk/en/latest/citing.html#gsc.tab=0):
+
+> We acknowledge IT Services at The University of Sheffield for the provision
+> of services for High Performance Computing.
+
 ## Reference documentation
 
 - [Using GPUs on Stanage](https://docs.hpc.shef.ac.uk/en/latest/stanage/GPUComputingStanage.html)
