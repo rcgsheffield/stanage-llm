@@ -108,6 +108,19 @@ This drops you into an [interactive shell](https://docs.hpc.shef.ac.uk/en/latest
 For the newer **H100** nodes use `--partition=gpu-h100` instead. Interactive
 sessions can run for up to **8 hours**. `--qos=gpu` is required.
 
+`--mem=82G --time=08:00:00` is sized for the largest model in the table below
+(`llama3.3:70b`) and a full working session — it's more than a quick test
+needs. Bigger requests queue longer (see [Selecting resources](#selecting-resources)
+below), so scale `--mem` and `--time` to the model you're actually running:
+
+```bash
+# Quick smoke test with the tiny default model
+srun --partition=gpu --qos=gpu --gres=gpu:1 --mem=8G --time=00:30:00 --pty bash
+
+# A 8B-14B model for interactive chat
+srun --partition=gpu --qos=gpu --gres=gpu:1 --mem=24G --time=02:00:00 --pty bash
+```
+
 ### 4. Start the model and chat
 
 Still in the GPU session, from the repo directory:
@@ -135,13 +148,17 @@ exit           # leave the GPU session -> releases the GPU to others
 Set `MODEL` before running the setup and start scripts. On a single 80 GB
 A100 you have plenty of room:
 
-| `MODEL`           | Size (quantized) | Good for                              |
-| ----------------- | ---------------- | ------------------------------------- |
-| `gemma3:270m`     | ~300 MB          | Tiny default, quick smoke test        |
-| `llama3.1:8b`     | ~5 GB            | Fast, general chat                    |
-| `qwen2.5:14b`     | ~9 GB            | Stronger reasoning, coding            |
-| `gpt-oss:20b`     | ~14 GB           | Open-weight, strong general model     |
-| `llama3.3:70b`    | ~43 GB           | Highest quality; fits one A100        |
+| `MODEL`           | Size (quantized) | Good for                              | Suggested `--mem` |
+| ----------------- | ---------------- | ------------------------------------- | ------------------ |
+| `gemma3:270m`     | ~300 MB          | Tiny default, quick smoke test        | 8G                  |
+| `llama3.1:8b`     | ~5 GB            | Fast, general chat                    | 16G                 |
+| `qwen2.5:14b`     | ~9 GB            | Stronger reasoning, coding            | 24G                 |
+| `gpt-oss:20b`     | ~14 GB           | Open-weight, strong general model     | 32G                 |
+| `llama3.3:70b`    | ~43 GB           | Highest quality; fits one A100        | 82G                 |
+
+The `--mem` column is a starting point (weights plus headroom for the
+runtime), not a measured value — see [Selecting resources](#selecting-resources)
+below for how to size `--mem`/`--time` properly once you know your workload.
 
 Override the default without editing any file — set it once and it flows
 through every script:
@@ -154,6 +171,24 @@ source scripts/start_ollama.sh
 ```
 
 Browse the full catalogue at <https://ollama.com/library>.
+
+### Selecting resources
+
+The `--mem`/`--time` values above are starting points, not a formula — actual
+usage depends on your model, prompt lengths, and how long you chat for.
+Stanage's [Choosing appropriate resources](https://docs.hpc.shef.ac.uk/en/latest/hpc/Choosing-appropriate-resources.html#gsc.tab=0)
+guidance is worth reading before running anything beyond a quick test:
+
+- **Bigger requests queue longer.** `--mem`/`--time` are a reservation, not a
+  measurement — the scheduler has to find a slot with *at least* that much
+  free before your job can start, so padding "just in case" directly costs
+  you wait time on a busy cluster. A request bigger than the cluster can ever
+  satisfy will simply never start.
+- **Measure, don't guess.** After a job finishes, run `seff <job-id>` to see
+  actual memory and time used, and size your next request from that instead
+  of copying the defaults in this README.
+- **Jobs are killed, not throttled, if they exceed a limit** — request
+  comfortably above what `seff` shows, not exactly at it.
 
 ---
 
