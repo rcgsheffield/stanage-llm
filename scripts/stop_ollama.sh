@@ -11,6 +11,12 @@ set -uo pipefail
 
 stopped=0
 
+# Stop the idle watchdog first so it can't fire (and scancel the job) after
+# we've already stopped the server manually.
+if [[ -n "${OLLAMA_WATCHDOG_PID:-}" ]] && kill -0 "$OLLAMA_WATCHDOG_PID" 2>/dev/null; then
+  kill "$OLLAMA_WATCHDOG_PID" 2>/dev/null
+fi
+
 # Prefer the PID exported by start_ollama.sh if it is still around.
 if [[ -n "${OLLAMA_SERVER_PID:-}" ]] && kill -0 "$OLLAMA_SERVER_PID" 2>/dev/null; then
   kill "$OLLAMA_SERVER_PID" 2>/dev/null && stopped=1

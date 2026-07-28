@@ -135,6 +135,16 @@ chat "Explain PCA in two sentences."   # or a one-off prompt
 `source` (not `bash`) matters — it starts the server in your shell and gives
 you the `chat` and `stop_ollama` helpers.
 
+Forgetting to stop the server (or just walking away) keeps the GPU reserved
+for the rest of your walltime. Set `OLLAMA_IDLE_TIMEOUT` (minutes, default
+`0` = off) to auto-quit after that long with no API activity — it stops the
+server and, if you're in a SLURM job, cancels it too so the GPU goes back to
+the scheduler:
+
+```bash
+OLLAMA_IDLE_TIMEOUT=60 source scripts/start_ollama.sh
+```
+
 ### 5. Finish up
 
 ```bash
