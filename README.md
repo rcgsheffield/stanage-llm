@@ -33,11 +33,7 @@ handles all of that so you can get from *"I have a Stanage account"* to
 
 ## Security
 
-### The cluster-wide rule comes first
-
-Before any question about this repo, there is a rule about the service itself.
-From the Stanage/Bessemer
-[filestore documentation](https://docs.hpc.shef.ac.uk/en/latest/hpc/filestore.html#shared-project-directories):
+The Stanage HPC [filestore documentation](https://docs.hpc.shef.ac.uk/en/latest/hpc/filestore.html#shared-project-directories) states:
 
 > **Danger**
 >
@@ -51,21 +47,9 @@ From the Stanage/Bessemer
 > that they do not and will not contain any sensitive data for the life time of
 > the area.
 
-Two things follow from this that people routinely miss:
+**This isn't specific to this repo.** The prohibition applies to the whole HPC service. The weaknesses described below are additional reasons to be careful — they are not the reason the rule exists, and fixing them would not make processing sensitive data permissible.
 
-- **It isn't specific to this repo.** The prohibition applies to the whole HPC
-  service. The weaknesses described below (unauthenticated API, plaintext logs)
-  are additional reasons to be careful — they are not the reason the rule
-  exists, and fixing them would not make sensitive data permissible.
-- **It covers data you didn't put there.** If you have a shared project or
-  research storage area mounted on the cluster, you are responsible for it
-  containing no sensitive data — including anything a colleague might add
-  later, for as long as the area exists. "I didn't upload anything sensitive"
-  is not sufficient; check with everyone who can write to the area before
-  requesting it be made available, and keep checking.
-
-If in doubt, don't mount it and don't process it — ask [Research Computing
-Support](https://docs.hpc.shef.ac.uk/en/latest/help.html#gsc.tab=0) first.
+If in doubt, don't mount it and don't process it — ask [Research Computing Support](https://docs.hpc.shef.ac.uk/en/latest/help.html) first.
 
 ### What data is this suitable for?
 
