@@ -13,6 +13,10 @@ repository-code: "https://github.com/rcgsheffield/stanage-llm"
 url: "https://github.com/rcgsheffield/stanage-llm"
 license: "MIT"
 date-released: "2026-07-24"
+identifiers:
+  - type: doi
+    value: "10.15131/shef.data.33102185"
+    description: "ORDA archive of this repository"
 references:
   - type: generic
     title: "Citing Stanage"
