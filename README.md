@@ -53,7 +53,7 @@ From the Stanage/Bessemer
 
 Two things follow from this that people routinely miss:
 
-- **It is not about this repo.** The prohibition applies to the whole HPC
+- **It isn't specific to this repo.** The prohibition applies to the whole HPC
   service. The weaknesses described below (unauthenticated API, plaintext logs)
   are additional reasons to be careful — they are not the reason the rule
   exists, and fixing them would not make sensitive data permissible.
@@ -96,9 +96,10 @@ weaknesses, both explained below:
 
 1. **The model API is unauthenticated**, and "localhost" does not mean
    "private to your job" on a shared node.
-2. **Prompts and outputs land in plaintext on shared storage** — the server
-   log (`$OLLAMA_DIR/server.*.log`) and, for batch jobs, the results file
-   (`$OLLAMA_DIR/results.*.jsonl`) both live on fastdata, which has no
+2. **Your data lands in plaintext on shared storage** — for batch jobs the
+   results file (`$OLLAMA_DIR/results.*.jsonl`) contains every prompt and
+   completion verbatim, and the server log (`$OLLAMA_DIR/server.*.log`)
+   records the requests you made. Both live on fastdata, which has no
    encryption at rest and no backups. Nothing here deletes them for you.
 
 If your work genuinely needs to process restricted data, use a service built
@@ -135,9 +136,9 @@ assume this repo can be made adequate by tweaking a variable.
 > Support](https://docs.hpc.shef.ac.uk/en/latest/help.html#gsc.tab=0) about
 > node exclusivity and the SSH access policy.
 >
-> `start_ollama.sh` and `00_setup.sh` enforce this: if `OLLAMA_HOST` is
-> overridden away from `127.0.0.1`/`localhost`/`::1`, they print a warning and
-> refuse to start. Set `OLLAMA_ALLOW_NONLOOPBACK=1` to override at your own
+> `start_ollama.sh` and `00_setup.sh` enforce loopback binding anyway: if
+> `OLLAMA_HOST` is overridden away from `127.0.0.1`/`localhost`/`::1`, they
+> print a warning and refuse to start. Set `OLLAMA_ALLOW_NONLOOPBACK=1` to override at your own
 > risk.
 >
 > `config/env.sh` picks the *port* per job (an OS-assigned free port, rather
@@ -383,11 +384,11 @@ uses two of them.
 | Fastdata | `/mnt/parscratch/users/$USER` | Container image, model weights, server logs, batch job output/results | No quota, no backups. Fast (Lustre) and readable from both login and GPU nodes — the only area both need to see the same files. Not tuned for lots of small files, so don't dump unrelated small-file workloads here. |
 | Home | `~` (`/users/$USER`) | This git checkout only | Capped at **50 GB**, not backed up. Everything large is deliberately kept out (see `config/env.sh`) so cloning this repo never risks the quota. |
 
-Neither area is encrypted at rest or backed up, and your prompts and model
-outputs are written there in plaintext (`server.*.log`, `results.*.jsonl`) —
-another reason not to run sensitive or confidential data through this setup.
-See [The cluster-wide rule comes first](#the-cluster-wide-rule-comes-first)
-above.
+Neither area is encrypted at rest or backed up, and everything this repo writes
+to fastdata is plaintext — including the server log (`server.*.log`) and, for
+batch jobs, every prompt and completion (`results.*.jsonl`) — another reason not
+to run sensitive or confidential data through this setup. See [The cluster-wide
+rule comes first](#the-cluster-wide-rule-comes-first) above.
 
 If you bind-mount a shared project directory into a job here, the same rule
 applies to that area: it must not contain restricted or sensitive data, now or

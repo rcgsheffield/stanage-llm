@@ -40,8 +40,9 @@ export APPTAINER_CACHEDIR="$PARSCRATCH/apptainer/cache"
 # Address the Ollama server binds to and clients connect to. Apptainer
 # shares the host network (no container network isolation), so client and
 # server find each other on localhost — but that's about discovery, not
-# security: it does NOT make the API private to your job. See "Security" in
-# README.md before relying on this for anything sensitive.
+# security: it does NOT make the API private to your job. Separately, the HPC
+# service must not be used for restricted or sensitive data at all -- no
+# setting here changes that. See "Security" in README.md.
 #
 # The port is picked per job by asking the OS for a free loopback port,
 # rather than hardcoded, so two jobs co-scheduled on the same physical node
