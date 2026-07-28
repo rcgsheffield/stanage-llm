@@ -45,14 +45,16 @@ share.
 - clinical, patient, or participant data,
 - commercially confidential or contractually restricted data (e.g. industry
   partner data, data under an NDA or a data sharing agreement),
+- anything above *Public* under the University's [Information Classification
+  scheme](https://sheffield.ac.uk/library/records-management-policy-and-guidance),
 - anything the University's [research data security
   guidance](https://sheffield.ac.uk/library/research-data-management/security)
   says needs controlled handling,
 - exam material, unpublished assessments, or HR/staff records.
 
-If you're unsure which bucket your data falls into, that guidance is the place
-to start — classify the data *before* you run anything through this setup, not
-after.
+If you're unsure which bucket your data falls into, classify it against the
+Information Classification scheme *before* you run anything through this setup,
+not after.
 
 Two independent reasons, both explained below:
 
@@ -369,6 +371,7 @@ If this work made use of Stanage, please also acknowledge the HPC service itself
 - [Apptainer/Singularity on Stanage](https://docs.hpc.shef.ac.uk/en/latest/stanage/software/apps/apptainer.html)
 - [Filestores (home / fastdata / scratch)](https://docs.hpc.shef.ac.uk/en/latest/hpc/filestore.html)
 - [Stanage specifications](https://docs.hpc.shef.ac.uk/en/latest/stanage/cluster_specs.html)
+- [Information Classification scheme (records management policy and guidance)](https://sheffield.ac.uk/library/records-management-policy-and-guidance)
 - [Research data security (University of Sheffield)](https://sheffield.ac.uk/library/research-data-management/security)
 - [Secure Data Service — for sensitive research data](https://students.sheffield.ac.uk/it-services/research/secure-data-service)
 
