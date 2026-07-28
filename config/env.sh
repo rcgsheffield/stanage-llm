@@ -42,7 +42,35 @@ export APPTAINER_CACHEDIR="$PARSCRATCH/apptainer/cache"
 # server find each other on localhost — but that's about discovery, not
 # security: it does NOT make the API private to your job. See "Security" in
 # README.md before relying on this for anything sensitive.
-export OLLAMA_HOST="${OLLAMA_HOST:-127.0.0.1:11434}"
+#
+# The port is picked per job by asking the OS for a free loopback port,
+# rather than hardcoded, so two jobs co-scheduled on the same physical node
+# (Stanage doesn't guarantee exclusive node allocation) don't collide on a
+# fixed port. This is collision AVOIDANCE only, not a security boundary --
+# see "Security" in README.md: a random port doesn't stop a co-located user
+# from finding it, since a loopback port scan takes seconds.
+_stanage_pick_free_port() {
+  python3 - <<'EOF'
+import socket
+s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+s.bind(("127.0.0.1", 0))
+print(s.getsockname()[1])
+s.close()
+EOF
+}
+
+if [[ -z "${OLLAMA_HOST:-}" ]]; then
+  if command -v python3 >/dev/null 2>&1; then
+    _stanage_port="$(_stanage_pick_free_port)"
+  else
+    echo "WARNING: python3 not found; falling back to fixed port 11434." >&2
+    echo "         Concurrent jobs on the same node may collide." >&2
+    _stanage_port=11434
+  fi
+  export OLLAMA_HOST="127.0.0.1:${_stanage_port}"
+fi
+unset -f _stanage_pick_free_port
+unset _stanage_port
 
 # Refuse (or, with an explicit opt-in, warn and continue) if OLLAMA_HOST has
 # been overridden away from loopback. See "Security" in README.md: nothing

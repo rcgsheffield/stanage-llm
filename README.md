@@ -51,6 +51,12 @@ handles all of that so you can get from *"I have a Stanage account"* to
 > overridden away from `127.0.0.1`/`localhost`/`::1`, they print a warning and
 > refuse to start. Set `OLLAMA_ALLOW_NONLOOPBACK=1` to override at your own
 > risk.
+>
+> `config/env.sh` picks the *port* per job (an OS-assigned free port, rather
+> than a fixed one) so two jobs co-scheduled on the same node don't
+> accidentally collide. This is collision avoidance only — it does **not**
+> change anything above. A co-located user can still find your port with a
+> few seconds of loopback port scanning.
 
 ## Prerequisites
 
@@ -156,7 +162,9 @@ Two optional extras live in [`examples/`](examples/):
 
 ### Query the API from Python
 
-Ollama serves an **OpenAI-compatible** API on `http://127.0.0.1:11434`, so your
+Ollama serves an **OpenAI-compatible** API on `http://$OLLAMA_HOST` (the port
+is chosen per job — see [Security](#security) above — and printed by
+`start_ollama.sh` as `==> Ready. The API is at http://$OLLAMA_HOST`), so your
 existing code using the `openai` client works with only a changed `base_url`
 (see [Security](#security) above for what that binding does and doesn't
 protect against). Inside the GPU session, after `source scripts/start_ollama.sh`:
