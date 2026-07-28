@@ -135,11 +135,23 @@ chat "Explain PCA in two sentences."   # or a one-off prompt
 `source` (not `bash`) matters — it starts the server in your shell and gives
 you the `chat` and `stop_ollama` helpers.
 
+> [!IMPORTANT]
+> GPUs on Stanage are a shared, limited, and heavily contended resource — an
+> idle interactive session still blocks other researchers' jobs from that GPU
+> for your whole walltime, even if you've stopped using it. Don't hold one
+> open "just in case" or leave a chat session running unattended without an
+> active research purpose; request only the time you need (see [Selecting
+> resources](#selecting-resources) below) and stop or exit as soon as you're
+> done. See Stanage's [Choosing appropriate
+> resources](https://docs.hpc.shef.ac.uk/en/latest/hpc/Choosing-appropriate-resources.html#gsc.tab=0)
+> guidance for the general principle.
+
 Forgetting to stop the server (or just walking away) keeps the GPU reserved
 for the rest of your walltime. Set `OLLAMA_IDLE_TIMEOUT` (minutes, default
 `0` = off) to auto-quit after that long with no API activity — it stops the
 server and, if you're in a SLURM job, cancels it too so the GPU goes back to
-the scheduler:
+the scheduler. This is a safety net, not a substitute for stopping the
+session yourself when you're done:
 
 ```bash
 OLLAMA_IDLE_TIMEOUT=60 source scripts/start_ollama.sh
