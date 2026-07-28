@@ -60,7 +60,8 @@ handles all of that so you can get from *"I have a Stanage account"* to
 
 ## Prerequisites
 
-- A Stanage account (see [getting an account](https://docs.hpc.shef.ac.uk/en/latest/hpc/accounts.html) and the ability to log in:
+- A Stanage account (see [getting an account](https://docs.hpc.shef.ac.uk/en/latest/hpc/accounts.html)).
+- The ability to log in:
   `ssh $USER@stanage.shef.ac.uk`
   (see [Connecting](https://docs.hpc.shef.ac.uk/en/latest/hpc/connecting.html)).
 - That's it. Apptainer is already on every node.
