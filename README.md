@@ -3,6 +3,12 @@
 [![ShellCheck](https://github.com/rcgsheffield/stanage-llm/actions/workflows/shellcheck.yml/badge.svg)](https://github.com/rcgsheffield/stanage-llm/actions/workflows/shellcheck.yml)
 [![DOI](https://img.shields.io/badge/DOI-10.15131%2Fshef.data.33102185-blue)](https://doi.org/10.15131/shef.data.33102185)
 
+> [!WARNING]
+> **Experimental — not officially supported.** This is an experimental tool
+> and is not an officially supported service of the University of Sheffield
+> or its Research IT / HPC teams. Use it at your own risk; it may change or
+> break without notice.
+
 A minimal, copy-paste example for running open-weight large language models
 (Llama, Qwen, Mistral, gpt-oss, …) on the University of Sheffield's
 **[Stanage](https://docs.hpc.shef.ac.uk/en/latest/stanage/index.html)** HPC
