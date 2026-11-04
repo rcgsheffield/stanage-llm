@@ -3,7 +3,10 @@
 # ONE-TIME SETUP -- run this ONCE, as a small CPU job launched from a Stanage
 # login node (run from the repo root):
 #
-#   srun --mem=8G --cpus-per-task=2 --time=02:00:00 bash scripts/00_setup.sh
+#   sbatch --mem=8G --cpus-per-task=2 --time=02:00:00 --wrap="bash scripts/00_setup.sh"
+#
+# (or `srun ...` instead of `sbatch ... --wrap=...` to watch it in the
+# foreground; sbatch survives an SSH disconnect, so it is preferred.)
 #
 # It does two things, both into fastdata (/mnt/parscratch):
 #   1. Pulls the Ollama container image from Docker Hub (~1 GB).
@@ -28,7 +31,7 @@ source "$ROOT/config/env.sh"
 
 _check_ollama_host_loopback || exit 1
 
-SETUP_SRUN="srun --mem=8G --cpus-per-task=2 --time=02:00:00 bash scripts/00_setup.sh"
+SETUP_SRUN="sbatch --mem=8G --cpus-per-task=2 --time=02:00:00 --wrap=\"bash scripts/00_setup.sh\""
 
 # --- Sanity checks ----------------------------------------------------------
 # Before printing anything else, so a login-node run fails with one clear
@@ -112,10 +115,12 @@ echo
 # --- 2. Pre-download the model ---------------------------------------------
 # Start a temporary server (CPU is fine for downloading -- no --nv), pull the
 # model, then stop the server. We share the config with the other scripts.
-# -B mounts fastdata into the container -- unlike home, it is not auto-mounted
-# by Apptainer, so without this OLLAMA_MODELS would resolve to a path that
-# doesn't exist inside the container and the download would silently land in
-# the container's throwaway overlay instead of persisting on fastdata.
+# -B /mnt/parscratch is explicit for clarity/portability: Stanage already
+# auto-binds $HOME, /mnt/parscratch and temporary directories into containers
+# (see the Apptainer docs linked above), so it is redundant here. Keep it as a
+# reminder that OLLAMA_MODELS must live on a bound path -- any other path
+# (e.g. a project area) would need its own -B, or the download would land in
+# the container's throwaway overlay instead of persisting.
 echo "==> Starting a temporary Ollama server to download '$MODEL' ..."
 apptainer exec -B /mnt/parscratch \
   --env OLLAMA_MODELS="$OLLAMA_MODELS" \
@@ -162,6 +167,7 @@ echo
 echo "==> Disk used by models: $(du -sh "$OLLAMA_MODELS" 2>/dev/null | cut -f1)"
 echo
 echo "Setup complete. This job will now exit. Next, from the login node:"
-echo "  1. Start an interactive GPU session:"
-echo "     srun --partition=gpu --qos=gpu --gres=gpu:a100:1 --mem=82G --cpus-per-task=8 --time=08:00:00 --pty bash"
+echo "  1. Run your prompts as a batch job (preferred):  sbatch examples/batch_inference.sbatch [prompts.jsonl]"
+echo "     or, for a SHORT smoke test only (interactive GPU use is discouraged):"
+echo "     srun --partition=gpu --qos=gpu --gres=gpu:a100:1 --mem=82G --cpus-per-task=8 --time=01:00:00 --pty bash"
 echo "  2. Then run:  source scripts/start_ollama.sh"

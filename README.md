@@ -259,24 +259,52 @@ large (the container image, model weights, logs, results) is stored under
 directory is capped at **50 GB** and fastdata is uncapped, fast, and visible
 from the GPU nodes.
 
-### 2. One-time setup (small CPU job)
+### 2. One-time setup (small CPU batch job)
 
 From the login node, in the repo directory:
 
 ```bash
-srun --mem=8G --cpus-per-task=2 --time=02:00:00 bash scripts/00_setup.sh
+sbatch --mem=8G --cpus-per-task=2 --time=02:00:00 --wrap="bash scripts/00_setup.sh"
+squeue --me                  # watch it
+tail -f slurm-<job-id>.out   # follow progress
 ```
 
 This pulls the Ollama container image (~1 GB) and pre-downloads your model's
-weights into fastdata. It runs as a short CPU-only job (no GPU, so it usually
+weights into fastdata. It runs as a CPU-only batch job (no GPU, so it usually
 starts quickly) because
 [Apptainer is only installed on the worker nodes](https://docs.hpc.shef.ac.uk/en/latest/stanage/software/apps/apptainer.html),
-not the login nodes. Its output streams back to your terminal, and when it
-finishes you're returned to the login node. The files it writes to fastdata
-are readable by the GPU nodes, so your actual GPU job runs completely offline.
-Re-running is safe; it skips work already done.
+not the login nodes. Using `sbatch` means a dropped SSH connection can't kill
+a half-finished multi-GB download. The files it writes to fastdata are
+readable by the GPU nodes, so your actual GPU job runs completely offline.
+Re-running is safe; it skips work already done. (`srun` instead of
+`sbatch ... --wrap=...` works too if you prefer to watch it in the foreground.)
 
-### 3. Grab a GPU
+### 3. Run your prompts as a batch job
+
+Stanage's docs say [interactive GPU use is strongly
+discouraged](https://docs.hpc.shef.ac.uk/en/latest/stanage/GPUComputingStanage.html)
+and that GPU work should go through batch jobs, so this is the main workflow.
+Put your prompts in a JSONL file, one `{"id": "1", "prompt": "..."}` per line
+(see [`examples/prompts.jsonl`](examples/prompts.jsonl)), then from the login
+node:
+
+```bash
+sbatch examples/batch_inference.sbatch my_prompts.jsonl   # omit the file to use the sample prompts
+squeue --me                                               # watch it
+```
+
+The job requests a GPU, starts the model, runs every prompt, writes
+`results.<job-id>.jsonl` to `/mnt/parscratch/users/$USER/ollama/`, and exits.
+Edit `--mem`/`--time` in the script to suit your model and dataset (batch jobs
+may run up to 96 hours), and uncomment the `--mail-*` lines to be emailed when
+it finishes. Pick a larger model with `MODEL=... sbatch ...` (after running
+setup with the same `MODEL`).
+
+### 4. Optional: short interactive smoke test
+
+Use an interactive GPU session only to try a model or iterate on a prompt
+before submitting a batch job — keep it **short (an hour or less)**. This is
+the only interactive GPU use the Stanage docs endorse.
 
 ```bash
 srun --partition=gpu --qos=gpu --gres=gpu:a100:1 --mem=82G --cpus-per-task=8 --time=00:30:00 --pty bash
@@ -287,30 +315,22 @@ Stanage has a single `gpu` partition and you pick the GPU type with
 `--gres=gpu:TYPE:1`: `a100` (80 GB, used throughout this repo), `h100` or
 `h100nvl` (94 GB). Avoid plain `--gres=gpu:1` unless you don't mind which
 architecture you get; to accept A100 or H100 but not H100 NVL (often a
-shorter queue), use `--gres=gpu:1 --exclude=gpu[31-35]`. Interactive
-sessions can run for up to **8 hours**. `--qos=gpu` is required.
+shorter queue), use `--gres=gpu:1 --exclude=gpu[31-35]`. `--qos=gpu` is required.
 
 `--mem=82G --cpus-per-task=8` is the documented
 [per-GPU minimum for an A100](https://docs.hpc.shef.ac.uk/en/latest/stanage/GPUComputingStanage.html)
 (roughly a fair share of a node's host RAM and CPUs), so keep it even for small
 models: interactive sessions otherwise default to only a few GB of host memory,
-which can cause CPU-to-GPU transfer failures. Queue time is saved by a short
-`--time`, so scale that to what you're doing:
+which can cause CPU-to-GPU transfer failures. Keep `--time` to about an hour
+(`--time=00:30:00` is plenty for the tiny default model, `gemma3:270m`); bigger
+requests queue longer (see [Selecting resources](#selecting-resources)). For an
+H100 NVL (94 GB VRAM) the documented minimum is 96 GB host RAM and 12 CPUs:
 
 ```bash
-# Quick smoke test with the tiny default model (gemma3:270m)
-srun --partition=gpu --qos=gpu --gres=gpu:a100:1 --mem=82G --cpus-per-task=8 --time=00:30:00 --pty bash
-
-# A full working session (e.g. llama3.3:70b)
-srun --partition=gpu --qos=gpu --gres=gpu:a100:1 --mem=82G --cpus-per-task=8 --time=08:00:00 --pty bash
-
-# H100 NVL (94 GB VRAM): 96 GB host RAM and 12 CPUs are the documented minimum
-srun --partition=gpu --qos=gpu --gres=gpu:h100nvl:1 --mem=96G --cpus-per-task=12 --time=02:00:00 --pty bash
+srun --partition=gpu --qos=gpu --gres=gpu:h100nvl:1 --mem=96G --cpus-per-task=12 --time=01:00:00 --pty bash
 ```
 
-### 4. Start the model and chat
-
-Still in the GPU session, from the repo directory:
+Then, from the repo directory:
 
 ```bash
 source scripts/start_ollama.sh
@@ -319,21 +339,25 @@ chat "Explain PCA in two sentences."   # or a one-off prompt
 ```
 
 `source` (not `bash`) matters — it starts the server in your shell and gives
-you the `chat` and `stop_ollama` helpers.
+you the `chat` and `stop_ollama` helpers. When you're done:
+
+```bash
+stop_ollama    # stop the server
+exit           # leave the GPU session -> releases the GPU to others
+```
 
 > [!IMPORTANT]
 > GPUs on Stanage are a shared, limited, and heavily contended resource — an
 > idle interactive session still blocks other researchers' jobs from that GPU
 > for your whole walltime, even if you've stopped using it. Don't hold one
-> open "just in case" or leave a chat session running unattended without an
-> active research purpose; request only the time you need (see [Selecting
-> resources](#selecting-resources) below) and stop or exit as soon as you're
-> done. See Stanage's [Choosing appropriate
+> open "just in case" or leave a chat session running unattended; request only
+> the time you need (see [Selecting resources](#selecting-resources) below)
+> and exit as soon as you're done. See Stanage's [Choosing appropriate
 > resources](https://docs.hpc.shef.ac.uk/en/latest/hpc/Choosing-appropriate-resources.html#gsc.tab=0)
 > guidance for the general principle.
 
 Forgetting to stop the server (or just walking away) keeps the GPU reserved
-for the rest of your walltime. `OLLAMA_IDLE_TIMEOUT` (minutes, default `60`)
+for the rest of your walltime. `OLLAMA_IDLE_TIMEOUT` (minutes, default `15`)
 auto-quits after that long with no API activity — it stops the server and,
 if you're in a SLURM job, cancels it too so the GPU goes back to the
 scheduler. This is a safety net, not a substitute for stopping the session
@@ -343,13 +367,6 @@ duration:
 ```bash
 OLLAMA_IDLE_TIMEOUT=0  source scripts/start_ollama.sh   # disable
 OLLAMA_IDLE_TIMEOUT=30 source scripts/start_ollama.sh   # override duration
-```
-
-### 5. Finish up
-
-```bash
-stop_ollama    # stop the server
-exit           # leave the GPU session -> releases the GPU to others
 ```
 
 ---
@@ -377,9 +394,8 @@ through every script:
 
 ```bash
 export MODEL=qwen2.5:14b
-srun --mem=8G --cpus-per-task=2 --time=02:00:00 bash scripts/00_setup.sh   # downloads that model
-# ... then in the GPU session:
-source scripts/start_ollama.sh
+sbatch --mem=8G --cpus-per-task=2 --time=02:00:00 --wrap="bash scripts/00_setup.sh"   # downloads that model
+sbatch examples/batch_inference.sbatch my_prompts.jsonl
 ```
 
 Browse the full catalogue at <https://ollama.com/library>.
@@ -410,7 +426,7 @@ guidance is worth reading before running anything beyond a quick test:
 
 ## Going further
 
-Two optional extras live in [`examples/`](examples/):
+Two extras live in [`examples/`](examples/):
 
 ### Query the API from Python
 
@@ -419,7 +435,7 @@ is chosen per job — see [Security](#security) above — and printed by
 `start_ollama.sh` as `==> Ready. The API is at http://$OLLAMA_HOST`), so your
 existing code using the `openai` client works with only a changed `base_url`
 (see [Security](#security) above for what that binding does and doesn't
-protect against). Inside the GPU session, after `source scripts/start_ollama.sh`:
+protect against). Inside a GPU session or batch job, after `source scripts/start_ollama.sh`:
 
 ```bash
 python3 examples/query_api.py "Draft a one-line commit message for a bug fix."
@@ -431,16 +447,15 @@ extra installs.
 
 ### Batch inference over a dataset (no interaction)
 
-To process a file of prompts unattended, submit the batch job — it requests a
-GPU, runs every prompt in [`examples/prompts.jsonl`](examples/prompts.jsonl)
-through the model, writes answers to fastdata, and exits. The SLURM output
+The main workflow ([step 3](#3-run-your-prompts-as-a-batch-job)). The batch job requests a
+GPU, runs every prompt in your JSONL file (default [`examples/prompts.jsonl`](examples/prompts.jsonl)), writes answers to fastdata, and exits. The SLURM output
 log itself also lands in `/mnt/parscratch/users/$USER/ollama/` — not the
 directory you submitted from — so it stays with the rest of that run's
 files:
 
 ```bash
-sbatch examples/batch_inference.sbatch     # from the repo root, on a login node
-squeue --me                                # watch it
+sbatch examples/batch_inference.sbatch my_prompts.jsonl   # from the repo root, on a login node
+squeue --me                                               # watch it
 ```
 
 See [`examples/batch_inference.sbatch`](examples/batch_inference.sbatch) for the
@@ -454,9 +469,9 @@ SLURM resource request you'd adapt for larger runs (batch jobs may run up to
 | Symptom | Fix |
 | --- | --- |
 | `nvidia-smi` fails / model is very slow | You're not on a GPU or forgot `--nv`. Confirm you started the session with `--gres=gpu:a100:1 --qos=gpu`. |
-| `no active SLURM job detected` when sourcing `start_ollama.sh` | You're on a login node. Grab a GPU session first (step 3 above), then source the script from inside it. |
-| `no active SLURM job detected` when running `00_setup.sh` | You ran it directly on a login node. Launch it with `srun` as shown in step 2. |
-| `apptainer: command not found` / `'apptainer' not found` | You're on a login node, where Apptainer isn't installed (it's only on the worker nodes, and there's no module to load). Run it inside a job: `srun` for setup (step 2), a GPU session for chatting (step 3). |
+| `no active SLURM job detected` when sourcing `start_ollama.sh` | You're on a login node. Grab a GPU session first (step 4 above), then source the script from inside it. |
+| `no active SLURM job detected` when running `00_setup.sh` | You ran it directly on a login node. Launch it with `sbatch` (or `srun`) as shown in step 2. |
+| `apptainer: command not found` / `'apptainer' not found` | You're on a login node, where Apptainer isn't installed (it's only on the worker nodes, and there's no module to load). Run it inside a job: `sbatch` for setup (step 2), a batch job (step 3) or short GPU session (step 4) for the model. |
 | `image not found` / `command not found` for the model | Run setup first (step 2). |
 | Out-of-memory / CUDA OOM | CUDA OOM: use a smaller `MODEL` or a bigger GPU (`--gres=gpu:h100nvl:1` for 94 GB). Host OOM (killed by SLURM): raise `--mem`. |
 | First response is slow, then fast | Normal — the weights load from Lustre into VRAM on first use. |
