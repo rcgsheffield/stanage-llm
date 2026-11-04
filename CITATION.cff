@@ -1,0 +1,24 @@
+cff-version: 1.2.0
+message: "If you use this software, please cite it as below."
+type: software
+title: "Stanage LLM Ollama Example"
+abstract: "This is an example of how to use the Stanage LLM with Ollama. It demonstrates the basic functionality and provides a starting point for further development."
+authors:
+  - given-names: "Joe Salvador Thornhill"
+    family-names: Heffer
+    email: "j.heffer@sheffield.ac.uk"
+    affiliation: "University of Sheffield"
+    orcid: 'https://orcid.org/0000-0001-8733-1117'
+repository-code: "https://github.com/rcgsheffield/stanage-llm"
+url: "https://github.com/rcgsheffield/stanage-llm"
+license: "MIT"
+date-released: "2026-07-24"
+identifiers:
+  - type: doi
+    value: "10.15131/shef.data.33102185"
+    description: "ORDA archive of this repository"
+references:
+  - type: generic
+    title: "Citing Stanage"
+    abstract: "Guidance on how to acknowledge use of the University of Sheffield's Stanage HPC cluster in publications."
+    url: "https://docs.hpc.shef.ac.uk/en/latest/citing.html"

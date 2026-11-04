@@ -29,6 +29,18 @@
 
 set -euo pipefail
 
+# results.*.jsonl holds every prompt and completion verbatim, so don't let the
+# default umask (0022) make it world-readable on the shared fastdata
+# filesystem. Contained to this job -- the sbatch script runs in its own
+# process.
+#
+# NOTE: this does NOT cover the --output file declared above. slurmstepd opens
+# llm-batch.%j.out before this line runs, using the umask recorded when you
+# ran sbatch. That file is kept private only by $OLLAMA_DIR being mode 700
+# (see scripts/00_setup.sh); submit with `umask 077 && sbatch ...` if you want
+# its own mode tightened as well.
+umask 077
+
 # SLURM starts the job in the directory you submitted from (the repo root).
 source config/env.sh
 

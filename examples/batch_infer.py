@@ -16,7 +16,7 @@ import os
 import sys
 import urllib.request
 
-MODEL = os.environ.get("MODEL", "llama3.1:8b")
+MODEL = os.environ.get("MODEL", "gemma3:270m")
 HOST = os.environ.get("OLLAMA_HOST", "127.0.0.1:11434")
 BASE_URL = f"http://{HOST}"
 
@@ -49,18 +49,42 @@ def main() -> int:
         return 1
     in_path, out_path = sys.argv[1], sys.argv[2]
 
-    with open(in_path) as fin, open(out_path, "w") as fout:
-        for line in fin:
+    # The results file holds every prompt and completion verbatim, and lands on
+    # Stanage's cluster-wide fastdata area. Create it 0600 rather than
+    # inheriting the umask, so it stays private even when this script is run by
+    # hand (outside the sbatch job, which sets umask 077 itself).
+    def private_file(path: str, flags: int) -> int:
+        return os.open(path, flags, 0o600)
+
+    error_count = 0
+    with open(in_path) as fin, open(out_path, "w", opener=private_file) as fout:
+        for line_num, line in enumerate(fin, start=1):
             line = line.strip()
             if not line:
                 continue
-            record = json.loads(line)
-            record["response"] = ask(record["prompt"])
+            try:
+                record = json.loads(line)
+                record["response"] = ask(record["prompt"])
+            except Exception as exc:
+                error_count += 1
+                try:
+                    record = json.loads(line)
+                except json.JSONDecodeError:
+                    record = {"raw_line": line}
+                record["error"] = str(exc)
+                fout.write(json.dumps(record) + "\n")
+                fout.flush()
+                print(
+                    f"[error] line={line_num} id={record.get('id', '?')}: {exc}",
+                    file=sys.stderr,
+                    flush=True,
+                )
+                continue
             fout.write(json.dumps(record) + "\n")
             fout.flush()
             print(f"[done] id={record.get('id', '?')}", flush=True)
 
-    print(f"Wrote results to {out_path}")
+    print(f"Wrote results to {out_path} ({error_count} error(s))")
     return 0
 
 

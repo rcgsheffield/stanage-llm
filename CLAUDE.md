@@ -12,7 +12,7 @@ account" to "I'm chatting with a model on an A100" in a few commands.
 
 ```
 config/env.sh              # single source of truth: paths, model, host — sourced by every script
-scripts/00_setup.sh        # one-time, login node: pulls container image + model weights
+scripts/00_setup.sh        # one-time, CPU job (srun from login node): pulls image + model weights
 scripts/start_ollama.sh    # sourced (not run) on a GPU node: starts server, defines `chat`/`stop_ollama`
 scripts/stop_ollama.sh     # stops the server
 examples/                  # optional extras: Python API client, batch SLURM job, sample prompts
@@ -22,7 +22,9 @@ examples/                  # optional extras: Python API client, batch SLURM job
 
 - No package manager — plain bash + Python 3 standard library (Python scripts
   optionally use the `openai` client if installed, but fall back gracefully).
-- Apptainer is preinstalled on Stanage; there is nothing to build or compile —
+- Apptainer is preinstalled on Stanage **worker nodes only** (not login
+  nodes), so every script that calls it must run inside a SLURM job; there is
+  nothing to build or compile —
   the Ollama image is pulled from Docker Hub.
 - All large artifacts (container image, model weights, logs, batch results)
   live under `/mnt/parscratch/users/$USER`, never under home (50 GB quota).
@@ -45,3 +47,19 @@ change:
   and shell functions (`chat`, `stop_ollama`) into the calling shell.
 - Model choice flows through `MODEL`, set in `config/env.sh` or overridden via
   env var — don't hardcode a model name in a script.
+
+## Releases
+
+Versioning and the CHANGELOG are automated by
+[release-please](https://github.com/googleapis/release-please) (see
+`.github/workflows/release.yml`, `release-please-config.json`,
+`.release-please-manifest.json`). It only detects version bumps from
+[Conventional Commits](https://www.conventionalcommits.org/) — prefix commit
+messages / PR titles with `feat:` or `fix:` to trigger a release, `chore:`,
+`docs:`, `refactor:` etc. for changes that shouldn't bump the version.
+
+On push to `main`, release-please opens/updates a `chore(main): release
+x.y.z` PR with the changelog. Merging that PR tags a GitHub Release, which
+triggers `.github/workflows/release-to-orda.yml` to archive the release
+tarball to ORDA (Figshare) via the `FIGSHARE_ARTICLE_ID` repo variable and
+`FIGSHARE_TOKEN` secret.

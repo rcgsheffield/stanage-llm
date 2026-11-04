@@ -11,6 +11,9 @@
 # Get a GPU session first with:
 #   srun --partition=gpu --qos=gpu --gres=gpu:1 --mem=82G --time=08:00:00 --pty bash
 #
+# Refuses to run outside a SLURM job (i.e. on a login node) -- see
+# _check_running_in_slurm_job in config/env.sh.
+#
 # This script is written to be safe to `source`: it does not enable `set -e`
 # (which would kill your interactive shell on any error) and cleans up after
 # itself via the `stop_ollama` helper.
@@ -21,7 +24,14 @@ _STANAGE_ROOT="$(cd "$_STANAGE_HERE/.." && pwd)"
 # shellcheck source=../config/env.sh
 source "$_STANAGE_ROOT/config/env.sh"
 
+_check_running_in_slurm_job \
+  "srun --partition=gpu --qos=gpu --gres=gpu:1 --mem=82G --time=08:00:00 --pty bash" \
+  || return 1 2>/dev/null || exit 1
+
 _check_ollama_host_loopback || return 1 2>/dev/null || exit 1
+
+# Warns only -- see config/env.sh. Never blocks the session.
+_check_fastdata_perms
 
 # Unique per session/job on this node (SLURM job ID under srun/sbatch, else
 # this shell's own PID). Passed into the container below so stop_ollama.sh
@@ -41,7 +51,8 @@ _ollama() {
 
 if [[ ! -f "$OLLAMA_SIF" ]]; then
   echo "ERROR: container image not found at $OLLAMA_SIF" >&2
-  echo "       Run 'bash scripts/00_setup.sh' on a login node first." >&2
+  echo "       Run setup first (README step 2):" >&2
+  echo "         srun --mem=8G --cpus-per-task=2 --time=02:00:00 bash scripts/00_setup.sh" >&2
   return 1 2>/dev/null || exit 1
 fi
 
@@ -51,8 +62,19 @@ if ! apptainer exec --nv "$OLLAMA_SIF" nvidia-smi >/dev/null 2>&1; then
   echo "         Continuing on CPU -- this will be very slow." >&2
 fi
 
+# Scope the log by job id (or PID outside a SLURM job) so concurrent
+# interactive sessions/batch jobs don't clobber each other's log.
+export OLLAMA_LOG="$OLLAMA_DIR/server.${SLURM_JOB_ID:-$$}.log"
+
+# The server logs every API request it handles, so the log is as sensitive as
+# the prompts you send. Pre-create it 0600 inside a SUBSHELL: this file is
+# sourced, so a bare `umask 077` would persist for the rest of your
+# interactive shell and silently change the mode of everything else you go on
+# to create. The `>` redirect below truncates without altering the mode.
+( umask 077; : >"$OLLAMA_LOG" )
+
 echo "==> Starting Ollama server (model: $MODEL) ..."
-_ollama serve >"$OLLAMA_DIR/server.log" 2>&1 &
+_ollama serve >"$OLLAMA_LOG" 2>&1 &
 export OLLAMA_SERVER_PID=$!
 
 echo -n "==> Waiting for server to be ready"
@@ -64,7 +86,7 @@ for _ in $(seq 1 60); do
 done
 echo
 if [[ "$_ready" != "1" ]]; then
-  echo "ERROR: server did not start. See $OLLAMA_DIR/server.log" >&2
+  echo "ERROR: server did not start. See $OLLAMA_LOG" >&2
   return 1 2>/dev/null || exit 1
 fi
 
@@ -72,7 +94,44 @@ fi
 chat() { _ollama run "$MODEL" "$@"; }
 stop_ollama() { bash "$_STANAGE_ROOT/scripts/stop_ollama.sh"; }
 
+# Idle watchdog (on by default, opt out with OLLAMA_IDLE_TIMEOUT=0): if
+# nothing has hit the Ollama API for $OLLAMA_IDLE_TIMEOUT minutes, stop the
+# server and (under SLURM) cancel the job so the GPU is released even if the
+# user walked away. $OLLAMA_LOG's mtime is used as the activity signal -- the
+# server logs every API request it handles, so a stale log means an idle
+# session.
+_start_idle_watchdog() {
+  local timeout_s=$(( OLLAMA_IDLE_TIMEOUT * 60 ))
+  (
+    while kill -0 "$OLLAMA_SERVER_PID" 2>/dev/null; do
+      sleep 60
+      local last idle
+      last=$(stat -c %Y "$OLLAMA_LOG" 2>/dev/null || echo 0)
+      idle=$(( $(date +%s) - last ))
+      if (( idle >= timeout_s )); then
+        {
+          echo "==> No Ollama activity for ${OLLAMA_IDLE_TIMEOUT}m -- stopping server."
+          [[ -n "${SLURM_JOB_ID:-}" ]] && echo "==> Cancelling SLURM job $SLURM_JOB_ID to release the GPU."
+        } | tee -a "$OLLAMA_LOG" >&2
+        pkill -f "ollama serve" 2>/dev/null
+        [[ -n "${SLURM_JOB_ID:-}" ]] && scancel "$SLURM_JOB_ID"
+        break
+      fi
+    done
+  ) &
+  export OLLAMA_WATCHDOG_PID=$!
+}
+
 echo "==> Ready. The API is at http://$OLLAMA_HOST"
 echo "    chat                 # interactive chat with $MODEL"
 echo '    chat "your prompt"   # single prompt'
 echo "    stop_ollama          # stop the server when you are done"
+echo "    Log: $OLLAMA_LOG"
+
+if [[ ! "${OLLAMA_IDLE_TIMEOUT:-0}" =~ ^[0-9]+$ ]]; then
+  echo "ERROR: OLLAMA_IDLE_TIMEOUT must be a non-negative integer (minutes), got '${OLLAMA_IDLE_TIMEOUT}'." >&2
+  return 1 2>/dev/null || exit 1
+elif [[ "${OLLAMA_IDLE_TIMEOUT:-0}" -gt 0 ]]; then
+  _start_idle_watchdog
+  echo "    Idle watchdog active: auto-quit after ${OLLAMA_IDLE_TIMEOUT}m with no activity."
+fi
