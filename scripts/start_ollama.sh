@@ -8,8 +8,10 @@
 #   chat                       # opens an interactive chat with $MODEL
 #   chat "Summarise this: ..."  # or send a one-off prompt
 #
-# Get a GPU session first with:
-#   srun --partition=gpu --qos=gpu --gres=gpu:a100:1 --mem=82G --time=08:00:00 --pty bash
+# Interactive GPU use is discouraged on Stanage except for short smoke tests /
+# debugging -- keep it to <= 1 h and use examples/batch_inference.sbatch for
+# real work. Get a GPU session first with:
+#   srun --partition=gpu --qos=gpu --gres=gpu:a100:1 --mem=24G --time=01:00:00 --pty bash
 #
 # Refuses to run outside a SLURM job (i.e. on a login node) -- see
 # _check_running_in_slurm_job in config/env.sh.
@@ -25,7 +27,7 @@ _STANAGE_ROOT="$(cd "$_STANAGE_HERE/.." && pwd)"
 source "$_STANAGE_ROOT/config/env.sh"
 
 _check_running_in_slurm_job \
-  "srun --partition=gpu --qos=gpu --gres=gpu:a100:1 --mem=82G --time=08:00:00 --pty bash" \
+  "srun --partition=gpu --qos=gpu --gres=gpu:a100:1 --mem=24G --time=01:00:00 --pty bash" \
   || return 1 2>/dev/null || exit 1
 
 _check_ollama_host_loopback || return 1 2>/dev/null || exit 1
@@ -53,7 +55,7 @@ _ollama() {
 if [[ ! -f "$OLLAMA_SIF" ]]; then
   echo "ERROR: container image not found at $OLLAMA_SIF" >&2
   echo "       Run setup first (README step 2):" >&2
-  echo "         srun --mem=8G --cpus-per-task=2 --time=02:00:00 bash scripts/00_setup.sh" >&2
+  echo "         sbatch --mem=8G --cpus-per-task=2 --time=02:00:00 --wrap="bash scripts/00_setup.sh"" >&2
   return 1 2>/dev/null || exit 1
 fi
 

@@ -8,7 +8,8 @@
 #
 # Submit from the repo root ON A LOGIN NODE (after running scripts/00_setup.sh):
 #
-#     sbatch examples/batch_inference.sbatch
+#     sbatch examples/batch_inference.sbatch                  # bundled sample prompts
+#     sbatch examples/batch_inference.sbatch my_prompts.jsonl # your own data
 #
 # Watch it with:   squeue --me
 # Cancel it with:  scancel <job-id>
@@ -21,6 +22,9 @@
 #SBATCH --cpus-per-task=8
 #SBATCH --mem=82G                   # ~ one A100's worth of host RAM
 #SBATCH --time=01:00:00             # batch jobs may run up to 96:00:00
+# Uncomment to be emailed when the job ends or fails:
+##SBATCH --mail-user=you@sheffield.ac.uk
+##SBATCH --mail-type=END,FAIL
 # Written next to server.log/results.*.jsonl (this job's other output) rather
 # than the submission directory, so a run's files stay together. SLURM writes
 # this file itself, before config/env.sh is sourced below, so it can't
@@ -52,7 +56,8 @@ source scripts/start_ollama.sh
 
 # Run inference. Results go to fastdata, keyed by job id so runs don't clobber.
 OUT="$OLLAMA_DIR/results.$SLURM_JOB_ID.jsonl"
-python3 examples/batch_infer.py examples/prompts.jsonl "$OUT"
+INPUT="${1:-examples/prompts.jsonl}"
+python3 examples/batch_infer.py "$INPUT" "$OUT"
 
 # Always stop the server so the node is left clean.
 stop_ollama
