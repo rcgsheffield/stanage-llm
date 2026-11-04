@@ -15,9 +15,9 @@
 #
 # --- SLURM resource request -------------------------------------------------
 #SBATCH --job-name=llm-batch
-#SBATCH --partition=gpu             # A100 nodes; use gpu-h100 for H100 nodes
+#SBATCH --partition=gpu             # single GPU partition on Stanage; GPU type is set by --gres below
 #SBATCH --qos=gpu                   # required for the GPU partitions on Stanage
-#SBATCH --gres=gpu:1                # one GPU
+#SBATCH --gres=gpu:a100:1          # one A100 (80 GB); or gpu:h100:1 / gpu:h100nvl:1
 #SBATCH --cpus-per-task=8
 #SBATCH --mem=82G                   # ~ one A100's worth of host RAM
 #SBATCH --time=01:00:00             # batch jobs may run up to 96:00:00

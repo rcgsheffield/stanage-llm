@@ -279,11 +279,15 @@ Re-running is safe; it skips work already done.
 ### 3. Grab a GPU
 
 ```bash
-srun --partition=gpu --qos=gpu --gres=gpu:1 --mem=8G --time=00:30:00 --pty bash
+srun --partition=gpu --qos=gpu --gres=gpu:a100:1 --mem=8G --time=00:30:00 --pty bash
 ```
 
 This drops you into an [interactive shell](https://docs.hpc.shef.ac.uk/en/latest/hpc/scheduler/index.html#types-of-job) on a [GPU node](https://docs.hpc.shef.ac.uk/en/latest/stanage/GPUComputingStanage.html#gsc.tab=0) with one **A100 (80 GB)**.
-For the newer **H100** nodes use `--partition=gpu-h100` instead. Interactive
+Stanage has a single `gpu` partition and you pick the GPU type with
+`--gres=gpu:TYPE:1`: `a100` (80 GB, used throughout this repo), `h100` or
+`h100nvl` (94 GB). Avoid plain `--gres=gpu:1` unless you don't mind which
+architecture you get; to accept A100 or H100 but not H100 NVL (often a
+shorter queue), use `--gres=gpu:1 --exclude=gpu[31-35]`. Interactive
 sessions can run for up to **8 hours**. `--qos=gpu` is required.
 
 `--mem=8G --time=00:30:00` is sized for the tiny default model
@@ -293,10 +297,10 @@ sessions can run for up to **8 hours**. `--qos=gpu` is required.
 
 ```bash
 # A 8B-14B model for interactive chat
-srun --partition=gpu --qos=gpu --gres=gpu:1 --mem=24G --time=02:00:00 --pty bash
+srun --partition=gpu --qos=gpu --gres=gpu:a100:1 --mem=24G --time=02:00:00 --pty bash
 
 # The largest model in the table below (llama3.3:70b), full working session
-srun --partition=gpu --qos=gpu --gres=gpu:1 --mem=82G --time=08:00:00 --pty bash
+srun --partition=gpu --qos=gpu --gres=gpu:a100:1 --mem=82G --time=08:00:00 --pty bash
 ```
 
 ### 4. Start the model and chat
@@ -439,12 +443,12 @@ SLURM resource request you'd adapt for larger runs (batch jobs may run up to
 
 | Symptom | Fix |
 | --- | --- |
-| `nvidia-smi` fails / model is very slow | You're not on a GPU or forgot `--nv`. Confirm you started the session with `--gres=gpu:1 --qos=gpu`. |
+| `nvidia-smi` fails / model is very slow | You're not on a GPU or forgot `--nv`. Confirm you started the session with `--gres=gpu:a100:1 --qos=gpu`. |
 | `no active SLURM job detected` when sourcing `start_ollama.sh` | You're on a login node. Grab a GPU session first (step 3 above), then source the script from inside it. |
 | `no active SLURM job detected` when running `00_setup.sh` | You ran it directly on a login node. Launch it with `srun` as shown in step 2. |
 | `apptainer: command not found` / `'apptainer' not found` | You're on a login node, where Apptainer isn't installed (it's only on the worker nodes, and there's no module to load). Run it inside a job: `srun` for setup (step 2), a GPU session for chatting (step 3). |
 | `image not found` / `command not found` for the model | Run setup first (step 2). |
-| Out-of-memory / CUDA OOM | Use a smaller `MODEL`, or request more with `--mem` / a bigger GPU (`--partition=gpu-h100-nvl` for 94 GB). |
+| Out-of-memory / CUDA OOM | Use a smaller `MODEL`, or request more with `--mem` / a bigger GPU (`--gres=gpu:h100nvl:1` for 94 GB). |
 | First response is slow, then fast | Normal — the weights load from Lustre into VRAM on first use. |
 | Home quota full | Confirm `OLLAMA_MODELS` points at `/mnt/parscratch/...` (it does by default). Never let Ollama write to `~/.ollama`. |
 | Server won't start | Check the log printed at startup: `cat "$OLLAMA_LOG"` (e.g. `/mnt/parscratch/users/$USER/ollama/server.<job-id>.log`). |
