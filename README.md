@@ -238,6 +238,36 @@ if you want SLURM's own `llm-batch.*.out` file to be mode `600` too — the
 
 ## Quick start
 
+The whole workflow is two jobs: a one-time CPU job that downloads everything
+into fastdata, then GPU jobs that run the model from those files with no
+internet access needed.
+
+```mermaid
+flowchart LR
+    subgraph login["Login node: no Apptainer, no GPU"]
+        you(["You<br/>git clone, edit config/env.sh"])
+    end
+
+    subgraph cpu["CPU worker node: one-time setup job"]
+        setup["scripts/00_setup.sh<br/>apptainer pull ollama.sif<br/>ollama pull $MODEL"]
+    end
+
+    subgraph gpu["GPU worker node: A100 job"]
+        run["examples/batch_inference.sbatch<br/>start Ollama, run every prompt, stop"]
+    end
+
+    net[["Internet<br/>Docker Hub + Ollama registry"]]
+    fast[("Fastdata<br/>/mnt/parscratch/users/$USER/ollama<br/>ollama.sif, models/, logs, results")]
+
+    you -- "step 2: sbatch ... 00_setup.sh" --> setup
+    net -. "image + weights" .-> setup
+    setup -- "writes" --> fast
+    you -- "step 3: sbatch batch_inference.sbatch" --> run
+    you -. "step 4, optional: srun --pty bash,<br/>source start_ollama.sh, chat" .-> run
+    fast -- "image + weights" --> run
+    run -- "results.JOB_ID.jsonl" --> fast
+```
+
 ### 1. Get the code and configure
 
 On a **login node**:
@@ -483,16 +513,39 @@ SLURM resource request you'd adapt for larger runs (batch jobs may run up to
 
 ## How it fits together
 
+Every script sources [`config/env.sh`](config/env.sh) first, so `MODEL`, the
+fastdata paths and the API address come from one place. Inside a GPU job, the
+batch script starts Ollama in the background, sends it every prompt over a
+loopback-only HTTP API, and shuts it down again:
+
+```mermaid
+sequenceDiagram
+    autonumber
+    participant J as batch_inference.sbatch
+    participant S as start_ollama.sh
+    participant O as ollama serve<br/>(Apptainer, --nv)
+    participant P as batch_infer.py
+    participant F as Fastdata
+
+    J->>J: source config/env.sh<br/>MODEL, paths, OLLAMA_HOST=127.0.0.1:port
+    J->>S: source
+    S->>O: apptainer exec --nv ... ollama serve (background)
+    S->>O: poll http://$OLLAMA_HOST until ready
+    J->>P: python3 batch_infer.py prompts.jsonl
+    O->>F: load $MODEL weights into GPU memory (first request)
+    loop each prompt
+        P->>O: HTTP request to 127.0.0.1:port
+        O-->>P: completion
+    end
+    P->>F: write results.JOB_ID.jsonl
+    J->>S: stop_ollama
+    S->>O: stop server
 ```
-CPU job (srun from login node)     GPU node (interactive srun session)
-------------------------------     -----------------------------------
-00_setup.sh                        start_ollama.sh
-  apptainer pull ollama.sif  --->    apptainer exec --nv ... ollama serve  (background)
-  ollama pull $MODEL         --->    chat  ->  ollama run $MODEL
-       |                                          |
-       v                                          v
-  /mnt/parscratch/users/$USER/ollama   (image + weights, shared by both)
-```
+
+The interactive smoke test (step 4) uses the same `start_ollama.sh`; you just
+type `chat` instead of running `batch_infer.py`. There, an idle watchdog stops
+the server and cancels the job after `OLLAMA_IDLE_TIMEOUT` minutes with no API
+activity, so a forgotten session gives the GPU back.
 
 ## Where your data lives
 
