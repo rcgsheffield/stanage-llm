@@ -206,7 +206,7 @@ _ollama_session_server_pids() {
 # the server and (if running under SLURM) cancels the job, freeing the GPU
 # for other users. On by default (60 min) so idle sessions don't hog shared
 # GPUs; set to 0 to disable.
-export OLLAMA_IDLE_TIMEOUT="${OLLAMA_IDLE_TIMEOUT:-60}"
+export OLLAMA_IDLE_TIMEOUT="${OLLAMA_IDLE_TIMEOUT:-15}"
 
 # --- Which model to run -----------------------------------------------------
 # See the "Choosing a model" table in README.md. gemma3:270m is a tiny,

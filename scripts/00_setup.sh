@@ -3,7 +3,10 @@
 # ONE-TIME SETUP -- run this ONCE, as a small CPU job launched from a Stanage
 # login node (run from the repo root):
 #
-#   srun --mem=8G --cpus-per-task=2 --time=02:00:00 bash scripts/00_setup.sh
+#   sbatch --mem=8G --cpus-per-task=2 --time=02:00:00 --wrap="bash scripts/00_setup.sh"
+#
+# (or `srun ...` instead of `sbatch ... --wrap=...` to watch it in the
+# foreground; sbatch survives an SSH disconnect, so it is preferred.)
 #
 # It does two things, both into fastdata (/mnt/parscratch):
 #   1. Pulls the Ollama container image from Docker Hub (~1 GB).
@@ -28,7 +31,7 @@ source "$ROOT/config/env.sh"
 
 _check_ollama_host_loopback || exit 1
 
-SETUP_SRUN="srun --mem=8G --cpus-per-task=2 --time=02:00:00 bash scripts/00_setup.sh"
+SETUP_SRUN="sbatch --mem=8G --cpus-per-task=2 --time=02:00:00 --wrap=\"bash scripts/00_setup.sh\""
 
 # --- Sanity checks ----------------------------------------------------------
 # Before printing anything else, so a login-node run fails with one clear
@@ -162,6 +165,7 @@ echo
 echo "==> Disk used by models: $(du -sh "$OLLAMA_MODELS" 2>/dev/null | cut -f1)"
 echo
 echo "Setup complete. This job will now exit. Next, from the login node:"
-echo "  1. Start an interactive GPU session:"
-echo "     srun --partition=gpu --qos=gpu --gres=gpu:a100:1 --mem=82G --time=08:00:00 --pty bash"
+echo "  1. Run your prompts as a batch job (preferred):  sbatch examples/batch_inference.sbatch [prompts.jsonl]"
+echo "     or, for a SHORT smoke test only (interactive GPU use is discouraged):"
+echo "     srun --partition=gpu --qos=gpu --gres=gpu:a100:1 --mem=24G --time=01:00:00 --pty bash"
 echo "  2. Then run:  source scripts/start_ollama.sh"
