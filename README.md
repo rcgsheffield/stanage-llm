@@ -235,9 +235,14 @@ if you want SLURM's own `llm-batch.*.out` file to be mode `600` too — the
 On a **login node**:
 
 ```bash
-git clone git@github.com:rcgsheffield/stanage-llm.git
+git clone https://github.com/rcgsheffield/stanage-llm.git
 cd stanage-llm
 ```
+
+This repository is public, so cloning over HTTPS needs no GitHub account or
+credentials. (The SSH form, `git@github.com:rcgsheffield/stanage-llm.git`,
+fails with `Permission denied (publickey)` unless you have registered an SSH
+key with GitHub from the cluster, so it isn't suggested for new accounts.)
 
 The only file you might edit is [`config/env.sh`](config/env.sh) — mainly to
 pick a different model (see [Choosing a model](#choosing-a-model)). Everything
