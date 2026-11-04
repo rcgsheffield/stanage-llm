@@ -34,7 +34,9 @@ examples/                  # optional extras: Python API client, batch SLURM job
 There is no test suite — this is a shell/SLURM example repo. To verify a
 change:
 
-1. Shellcheck any modified script: `shellcheck scripts/*.sh`
+1. Shellcheck any modified script: `shellcheck scripts/*.sh`. Lint Python
+   with `ruff check examples` and workflows with `actionlint`. CI also runs
+   these, plus a `CITATION.cff` validation and a lychee Markdown link check.
 2. Confirm scripts still source `config/env.sh` correctly and don't hardcode
    paths that should come from it.
 3. If touching SLURM directives in `examples/batch_inference.sbatch`, sanity

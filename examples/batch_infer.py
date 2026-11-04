@@ -65,7 +65,7 @@ def main() -> int:
             try:
                 record = json.loads(line)
                 record["response"] = ask(record["prompt"])
-            except Exception as exc:
+            except Exception as exc:  # noqa: BLE001 - keep going: one bad line must not abort the batch
                 error_count += 1
                 try:
                     record = json.loads(line)

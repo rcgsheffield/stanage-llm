@@ -1,0 +1,26 @@
+name: Ruff
+
+permissions:
+  contents: read
+
+on:
+  push:
+    branches: [ main ]
+    paths:
+      - '**.py'
+      - '.github/workflows/ruff.yml'
+  pull_request:
+    paths:
+      - '**.py'
+      - '.github/workflows/ruff.yml'
+
+jobs:
+  ruff:
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7.0.1
+      - name: Ruff
+        uses: astral-sh/ruff-action@v4.1.0
+        with:
+          src: examples
