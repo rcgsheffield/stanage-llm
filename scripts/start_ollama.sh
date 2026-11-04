@@ -9,7 +9,7 @@
 #   chat "Summarise this: ..."  # or send a one-off prompt
 #
 # Get a GPU session first with:
-#   srun --partition=gpu --qos=gpu --gres=gpu:a100:1 --mem=82G --time=08:00:00 --pty bash
+#   srun --partition=gpu --qos=gpu --gres=gpu:a100:1 --mem=82G --cpus-per-task=8 --time=08:00:00 --pty bash
 #
 # Refuses to run outside a SLURM job (i.e. on a login node) -- see
 # _check_running_in_slurm_job in config/env.sh.
@@ -25,7 +25,7 @@ _STANAGE_ROOT="$(cd "$_STANAGE_HERE/.." && pwd)"
 source "$_STANAGE_ROOT/config/env.sh"
 
 _check_running_in_slurm_job \
-  "srun --partition=gpu --qos=gpu --gres=gpu:a100:1 --mem=82G --time=08:00:00 --pty bash" \
+  "srun --partition=gpu --qos=gpu --gres=gpu:a100:1 --mem=82G --cpus-per-task=8 --time=08:00:00 --pty bash" \
   || return 1 2>/dev/null || exit 1
 
 _check_ollama_host_loopback || return 1 2>/dev/null || exit 1
