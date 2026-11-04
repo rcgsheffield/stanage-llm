@@ -43,7 +43,8 @@ _check_fastdata_perms
 export OLLAMA_STANAGE_TAG="${SLURM_JOB_ID:-$$}"
 
 # The command prefix shared by the server and the client. --nv exposes the
-# GPU; -B mounts fastdata (home is auto-mounted, parscratch is not).
+# GPU; -B /mnt/parscratch is explicit for clarity/portability (Stanage already
+# auto-binds $HOME, /mnt/parscratch and temp dirs into containers).
 _ollama() {
   apptainer exec --nv -B /mnt/parscratch \
     --env OLLAMA_MODELS="$OLLAMA_MODELS" \

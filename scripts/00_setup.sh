@@ -115,10 +115,12 @@ echo
 # --- 2. Pre-download the model ---------------------------------------------
 # Start a temporary server (CPU is fine for downloading -- no --nv), pull the
 # model, then stop the server. We share the config with the other scripts.
-# -B mounts fastdata into the container -- unlike home, it is not auto-mounted
-# by Apptainer, so without this OLLAMA_MODELS would resolve to a path that
-# doesn't exist inside the container and the download would silently land in
-# the container's throwaway overlay instead of persisting on fastdata.
+# -B /mnt/parscratch is explicit for clarity/portability: Stanage already
+# auto-binds $HOME, /mnt/parscratch and temporary directories into containers
+# (see the Apptainer docs linked above), so it is redundant here. Keep it as a
+# reminder that OLLAMA_MODELS must live on a bound path -- any other path
+# (e.g. a project area) would need its own -B, or the download would land in
+# the container's throwaway overlay instead of persisting.
 echo "==> Starting a temporary Ollama server to download '$MODEL' ..."
 apptainer exec -B /mnt/parscratch \
   --env OLLAMA_MODELS="$OLLAMA_MODELS" \
