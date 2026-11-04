@@ -1,0 +1,30 @@
+name: Link check
+
+permissions:
+  contents: read
+
+on:
+  pull_request:
+    paths:
+      - '**.md'
+      - '.github/workflows/links.yml'
+  schedule:
+    # Weekly, Monday 06:00 UTC, to catch link rot between changes.
+    - cron: '0 6 * * 1'
+  workflow_dispatch:
+
+jobs:
+  lychee:
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7.0.1
+      - name: Check links
+        uses: lycheeverse/lychee-action@v2.9.0
+        with:
+          # --exclude-all-private skips localhost / private-IP examples
+          # (e.g. the Ollama server on a compute node).
+          args: --no-progress --exclude-all-private --max-retries 3 '**/*.md'
+          fail: true
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

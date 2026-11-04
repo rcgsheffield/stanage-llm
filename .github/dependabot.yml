@@ -1,0 +1,12 @@
+version: 2
+updates:
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: monthly
+    # Conventional-commit prefix so release-please doesn't cut a release.
+    commit-message:
+      prefix: ci
+    groups:
+      actions:
+        patterns: ['*']
