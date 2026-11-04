@@ -13,7 +13,7 @@
 
 # --- Where everything lives -------------------------------------------------
 # Fastdata (/mnt/parscratch) has no quota, is fast (Lustre), and is reachable
-# from BOTH the login node and the worker/GPU nodes. Your home directory
+# from BOTH the login nodes and the worker/GPU nodes. Your home directory
 # (/users/$USER) is only 50 GB, so model weights and the container image must
 # NOT go there.
 export PARSCRATCH="/mnt/parscratch/users/$USER"
@@ -98,6 +98,31 @@ _check_ollama_host_loopback() {
   return 1
 }
 
+# Refuse to run outside a SLURM job. Apptainer is only installed on Stanage's
+# worker nodes, not the login nodes, and login nodes are shared and not meant
+# for sustained compute anyway. SLURM_JOB_ID is set by both srun and sbatch
+# and unset on a bare login-node shell, so its absence is a reliable "not in
+# a job" signal. $1 is the command the caller should suggest instead.
+# Override with STANAGE_ALLOW_NO_SLURM=1 for local/off-Stanage testing.
+# Called by 00_setup.sh and start_ollama.sh.
+_check_running_in_slurm_job() {
+  local hint="$1"
+  if [[ -n "${SLURM_JOB_ID:-}" ]]; then
+    return 0
+  fi
+  if [[ "${STANAGE_ALLOW_NO_SLURM:-0}" == "1" ]]; then
+    echo "WARNING: no SLURM_JOB_ID detected, but continuing because" >&2
+    echo "         STANAGE_ALLOW_NO_SLURM=1." >&2
+    return 0
+  fi
+  echo "ERROR: no active SLURM job detected (SLURM_JOB_ID is unset)." >&2
+  echo "       You appear to be on a login node ($(hostname)), where" >&2
+  echo "       Apptainer is not installed. Start a job with (from the repo root):" >&2
+  echo "         $hint" >&2
+  echo "       Set STANAGE_ALLOW_NO_SLURM=1 to override (e.g. local testing)." >&2
+  return 1
+}
+
 # Warn -- never change anything -- if the fastdata directories holding your
 # prompts, completions and server logs are reachable by other users. Fastdata
 # is a cluster-wide filesystem, so directory permissions are the only thing
@@ -130,7 +155,8 @@ _check_fastdata_perms() {
     echo "         your prompts and completions in plaintext. Make it" >&2
     echo "         private with:" >&2
     echo "           chmod 700 '$OLLAMA_DIR' && chmod -R go-rwx '$OLLAMA_DIR'" >&2
-    echo "         or re-run 'STANAGE_FIX_PERMS=1 bash scripts/00_setup.sh'." >&2
+    echo "         or re-run setup with STANAGE_FIX_PERMS=1, e.g. from a login node:" >&2
+    echo "           STANAGE_FIX_PERMS=1 srun --mem=8G --cpus-per-task=2 --time=02:00:00 bash scripts/00_setup.sh" >&2
     echo "         That stops FUTURE reads only -- it cannot un-share" >&2
     echo "         anything another user has already copied." >&2
     bad=1

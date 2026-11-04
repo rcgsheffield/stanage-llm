@@ -26,7 +26,8 @@ handles all of that so you can get from *"I have a Stanage account"* to
 
 - **Ollama** is the simplest way to run a model: one program, it downloads
   quantized models for you, and it serves a local API.
-- **Apptainer** is preinstalled on Stanage and needs no root — we *pull* a
+- **Apptainer** is preinstalled on Stanage's worker nodes (not the login
+  nodes) and needs no root — we *pull* a
   ready-made image, so there is nothing to build or compile.
 - **No dependency hell:** the container already contains CUDA, the GPU
   runtime, and Ollama.
@@ -112,7 +113,7 @@ The longer answer, because "shared" means two different things here:
 - **`/mnt/parscratch` is a cluster-wide filesystem.** It's a single Lustre
   filesystem mounted on the login node and every worker node, and every Stanage
   user's data sits on it. That's not incidental — it's *why* this repo uses it:
-  the login node (which downloads the model) and the GPU node (which runs it)
+  the setup job (which downloads the model) and the GPU node (which runs it)
   have to see the same files.
 - **Your own subdirectory, `/mnt/parscratch/users/$USER`, is yours** — but it
   isn't private automatically. The Stanage docs note that this directory
@@ -150,7 +151,7 @@ To fix it, either run the `chmod` the warning prints, or re-run setup with the
 opt-in flag:
 
 ```bash
-STANAGE_FIX_PERMS=1 bash scripts/00_setup.sh
+STANAGE_FIX_PERMS=1 srun --mem=8G --cpus-per-task=2 --time=02:00:00 bash scripts/00_setup.sh
 ```
 
 Check the result yourself at any point:
@@ -224,7 +225,8 @@ if you want SLURM's own `llm-batch.*.out` file to be mode `600` too — the
 - The ability to log in:
   `ssh $USER@stanage.shef.ac.uk`
   (see [Connecting](https://docs.hpc.shef.ac.uk/en/latest/hpc/connecting.html)).
-- That's it. Apptainer is already on every node.
+- That's it. Apptainer is already installed on the worker nodes (it isn't on
+  the login nodes, which is why setup runs as a small job — see step 2).
 
 ---
 
@@ -251,17 +253,22 @@ large (the container image, model weights, logs, results) is stored under
 directory is capped at **50 GB** and fastdata is uncapped, fast, and visible
 from the GPU nodes.
 
-### 2. One-time setup (login node)
+### 2. One-time setup (small CPU job)
+
+From the login node, in the repo directory:
 
 ```bash
-bash scripts/00_setup.sh
+srun --mem=8G --cpus-per-task=2 --time=02:00:00 bash scripts/00_setup.sh
 ```
 
 This pulls the Ollama container image (~1 GB) and pre-downloads your model's
-weights into fastdata. We do this **on the login node on purpose**: it has
-reliable internet, and the files it writes are readable by the GPU nodes — so
-your actual GPU job runs completely offline. Re-running is safe; it skips work
-already done.
+weights into fastdata. It runs as a short CPU-only job (no GPU, so it usually
+starts quickly) because
+[Apptainer is only installed on the worker nodes](https://docs.hpc.shef.ac.uk/en/latest/stanage/software/apps/apptainer.html),
+not the login nodes. Its output streams back to your terminal, and when it
+finishes you're returned to the login node. The files it writes to fastdata
+are readable by the GPU nodes, so your actual GPU job runs completely offline.
+Re-running is safe; it skips work already done.
 
 ### 3. Grab a GPU
 
@@ -354,7 +361,7 @@ through every script:
 
 ```bash
 export MODEL=qwen2.5:14b
-bash scripts/00_setup.sh          # downloads that model
+srun --mem=8G --cpus-per-task=2 --time=02:00:00 bash scripts/00_setup.sh   # downloads that model
 # ... then in the GPU session:
 source scripts/start_ollama.sh
 ```
@@ -428,21 +435,22 @@ SLURM resource request you'd adapt for larger runs (batch jobs may run up to
 | --- | --- |
 | `nvidia-smi` fails / model is very slow | You're not on a GPU or forgot `--nv`. Confirm you started the session with `--gres=gpu:1 --qos=gpu`. |
 | `no active SLURM job detected` when sourcing `start_ollama.sh` | You're on a login node. Grab a GPU session first (step 3 above), then source the script from inside it. |
-| `apptainer: command not found` | You're probably not on Stanage. It's preinstalled there — no `module load` needed. |
-| `image not found` / `command not found` for the model | Run `bash scripts/00_setup.sh` on a login node first. |
+| `no active SLURM job detected` when running `00_setup.sh` | You ran it directly on a login node. Launch it with `srun` as shown in step 2. |
+| `apptainer: command not found` / `'apptainer' not found` | You're on a login node, where Apptainer isn't installed (it's only on the worker nodes, and there's no module to load). Run it inside a job: `srun` for setup (step 2), a GPU session for chatting (step 3). |
+| `image not found` / `command not found` for the model | Run setup first (step 2). |
 | Out-of-memory / CUDA OOM | Use a smaller `MODEL`, or request more with `--mem` / a bigger GPU (`--partition=gpu-h100-nvl` for 94 GB). |
 | First response is slow, then fast | Normal — the weights load from Lustre into VRAM on first use. |
 | Home quota full | Confirm `OLLAMA_MODELS` points at `/mnt/parscratch/...` (it does by default). Never let Ollama write to `~/.ollama`. |
 | Server won't start | Check the log printed at startup: `cat "$OLLAMA_LOG"` (e.g. `/mnt/parscratch/users/$USER/ollama/server.<job-id>.log`). |
-| `WARNING: ... is mode 755 -- readable by other users` | Your fastdata area was created before this check existed, so other users can read your prompts and logs. Run the `chmod` the warning prints, or `STANAGE_FIX_PERMS=1 bash scripts/00_setup.sh`. See [Who else can see my models and prompts?](#who-else-can-see-my-models-and-prompts). |
+| `WARNING: ... is mode 755 -- readable by other users` | Your fastdata area was created before this check existed, so other users can read your prompts and logs. Run the `chmod` the warning prints, or re-run setup (step 2) with `STANAGE_FIX_PERMS=1` in front. See [Who else can see my models and prompts?](#who-else-can-see-my-models-and-prompts). |
 
 ---
 
 ## How it fits together
 
 ```
-login node                         GPU node (interactive srun session)
------------                        -----------------------------------
+CPU job (srun from login node)     GPU node (interactive srun session)
+------------------------------     -----------------------------------
 00_setup.sh                        start_ollama.sh
   apptainer pull ollama.sif  --->    apptainer exec --nv ... ollama serve  (background)
   ollama pull $MODEL         --->    chat  ->  ollama run $MODEL
