@@ -33,12 +33,20 @@ _check_ollama_host_loopback || return 1 2>/dev/null || exit 1
 # Warns only -- see config/env.sh. Never blocks the session.
 _check_fastdata_perms
 
+# Unique per session/job on this node (SLURM job ID under srun/sbatch, else
+# this shell's own PID). Passed into the container below so stop_ollama.sh
+# and the idle watchdog can find THIS session's server (via
+# _ollama_session_server_pids) and never touch another concurrent job's
+# server on a shared node.
+export OLLAMA_STANAGE_TAG="${SLURM_JOB_ID:-$$}"
+
 # The command prefix shared by the server and the client. --nv exposes the
 # GPU; -B mounts fastdata (home is auto-mounted, parscratch is not).
 _ollama() {
   apptainer exec --nv -B /mnt/parscratch \
     --env OLLAMA_MODELS="$OLLAMA_MODELS" \
     --env OLLAMA_HOST="$OLLAMA_HOST" \
+    --env OLLAMA_STANAGE_TAG="$OLLAMA_STANAGE_TAG" \
     "$OLLAMA_SIF" ollama "$@"
 }
 
@@ -106,7 +114,10 @@ _start_idle_watchdog() {
           echo "==> No Ollama activity for ${OLLAMA_IDLE_TIMEOUT}m -- stopping server."
           [[ -n "${SLURM_JOB_ID:-}" ]] && echo "==> Cancelling SLURM job $SLURM_JOB_ID to release the GPU."
         } | tee -a "$OLLAMA_LOG" >&2
-        pkill -f "ollama serve" 2>/dev/null
+        # Only THIS session's server -- never an unscoped pkill, which would
+        # also kill your other jobs' servers on a shared node.
+        # shellcheck disable=SC2046  # word-splitting the PID list is intended
+        kill $(_ollama_session_server_pids "$OLLAMA_STANAGE_TAG") 2>/dev/null
         [[ -n "${SLURM_JOB_ID:-}" ]] && scancel "$SLURM_JOB_ID"
         break
       fi

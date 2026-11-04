@@ -179,6 +179,28 @@ _check_fastdata_perms() {
   return 0
 }
 
+# Print the PIDs of YOUR `ollama serve` processes started by the session
+# whose OLLAMA_STANAGE_TAG (set by start_ollama.sh) is $1, one per line.
+# Used by stop_ollama.sh and the idle watchdog so they never kill another
+# concurrent job's server on a shared node.
+#
+# The tag is matched in each process's ENVIRONMENT, not its command line:
+# Apptainer's `--env` flag never appears in any process's argv (the tree is
+# "Apptainer runtime parent: ollama.sif" -> "ollama serve"), so a
+# `pkill -f "OLLAMA_STANAGE_TAG=..."` would never match. Likewise
+# $OLLAMA_SERVER_PID is only the bash subshell wrapping `apptainer exec`;
+# killing it leaves the server itself running.
+_ollama_session_server_pids() {
+  local tag="$1" pid
+  [[ -n "$tag" ]] || return 0
+  for pid in $(pgrep -u "$(id -u)" -f '^([^ ]*/)?ollama serve'); do
+    if tr '\0' '\n' <"/proc/$pid/environ" 2>/dev/null |
+       grep -qxF "OLLAMA_STANAGE_TAG=$tag"; then
+      echo "$pid"
+    fi
+  done
+}
+
 # --- Idle auto-quit ---------------------------------------------------------
 # Minutes of no Ollama API activity before start_ollama.sh's watchdog stops
 # the server and (if running under SLURM) cancels the job, freeing the GPU
