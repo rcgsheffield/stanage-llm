@@ -1,18 +1,22 @@
 #!/usr/bin/env bash
 #
-# ONE-TIME SETUP -- run this ONCE, on a Stanage LOGIN NODE (not in a job).
+# ONE-TIME SETUP -- run this ONCE, as a small CPU job launched from a Stanage
+# login node (run from the repo root):
 #
-#   bash scripts/00_setup.sh
+#   srun --mem=8G --cpus-per-task=2 --time=02:00:00 bash scripts/00_setup.sh
 #
 # It does two things, both into fastdata (/mnt/parscratch):
 #   1. Pulls the Ollama container image from Docker Hub (~1 GB).
 #   2. Pre-downloads your chosen model's weights.
 #
-# We download here, on the login node, because it reliably has internet
-# access and the fastdata area is shared with the GPU nodes. Your later GPU
-# job then runs completely offline -- it just reads the local files.
+# It must run inside a SLURM job because Apptainer is only installed on the
+# worker nodes, not the login nodes:
+# https://docs.hpc.shef.ac.uk/en/latest/stanage/software/apps/apptainer.html
+# Everything lands in fastdata, which the GPU nodes share, so your later GPU
+# job runs completely offline -- it just reads the local files.
 #
-# No GPU and no root are needed for this step.
+# No GPU and no root are needed for this step. --time=02:00:00 leaves room
+# for the largest models in the README table (~40 GB of weights).
 
 set -euo pipefail
 
@@ -24,14 +28,19 @@ source "$ROOT/config/env.sh"
 
 _check_ollama_host_loopback || exit 1
 
-echo "==> Model to prepare : $MODEL"
-echo "==> Fastdata area     : $OLLAMA_DIR"
-echo
+SETUP_SRUN="srun --mem=8G --cpus-per-task=2 --time=02:00:00 bash scripts/00_setup.sh"
 
 # --- Sanity checks ----------------------------------------------------------
+# Before printing anything else, so a login-node run fails with one clear
+# message rather than after output that looks like setup has started.
+_check_running_in_slurm_job "$SETUP_SRUN" || exit 1
+
 if ! command -v apptainer >/dev/null 2>&1; then
-  echo "ERROR: 'apptainer' not found. Are you on Stanage? It is preinstalled" >&2
-  echo "       on the login and worker nodes -- no 'module load' is required." >&2
+  echo "ERROR: 'apptainer' not found on $(hostname)." >&2
+  echo "       On Stanage it is installed on the worker nodes only (not the" >&2
+  echo "       login nodes), and no 'module load' is needed. From a login" >&2
+  echo "       node, in the repo root, run:" >&2
+  echo "         $SETUP_SRUN" >&2
   exit 1
 fi
 
@@ -39,6 +48,10 @@ if [[ ! -d /mnt/parscratch ]]; then
   echo "ERROR: /mnt/parscratch not found. This script must run on Stanage." >&2
   exit 1
 fi
+
+echo "==> Model to prepare : $MODEL"
+echo "==> Fastdata area     : $OLLAMA_DIR"
+echo
 
 # --- Create the fastdata area, privately ------------------------------------
 # Everything below is written to fastdata, a cluster-wide filesystem. The
@@ -148,7 +161,7 @@ apptainer exec -B /mnt/parscratch \
 echo
 echo "==> Disk used by models: $(du -sh "$OLLAMA_MODELS" 2>/dev/null | cut -f1)"
 echo
-echo "Setup complete. Next:"
+echo "Setup complete. This job will now exit. Next, from the login node:"
 echo "  1. Start an interactive GPU session:"
 echo "     srun --partition=gpu --qos=gpu --gres=gpu:1 --mem=82G --time=08:00:00 --pty bash"
 echo "  2. Then run:  source scripts/start_ollama.sh"
