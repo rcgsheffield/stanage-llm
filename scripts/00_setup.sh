@@ -169,5 +169,5 @@ echo
 echo "Setup complete. This job will now exit. Next, from the login node:"
 echo "  1. Run your prompts as a batch job (preferred):  sbatch examples/batch_inference.sbatch [prompts.jsonl]"
 echo "     or, for a SHORT smoke test only (interactive GPU use is discouraged):"
-echo "     srun --partition=gpu --qos=gpu --gres=gpu:a100:1 --mem=24G --time=01:00:00 --pty bash"
+echo "     srun --partition=gpu --qos=gpu --gres=gpu:a100:1 --mem=82G --cpus-per-task=8 --time=01:00:00 --pty bash"
 echo "  2. Then run:  source scripts/start_ollama.sh"

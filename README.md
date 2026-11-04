@@ -307,7 +307,7 @@ before submitting a batch job — keep it **short (an hour or less)**. This is
 the only interactive GPU use the Stanage docs endorse.
 
 ```bash
-srun --partition=gpu --qos=gpu --gres=gpu:a100:1 --mem=8G --time=00:30:00 --pty bash
+srun --partition=gpu --qos=gpu --gres=gpu:a100:1 --mem=82G --cpus-per-task=8 --time=00:30:00 --pty bash
 ```
 
 This drops you into an [interactive shell](https://docs.hpc.shef.ac.uk/en/latest/hpc/scheduler/index.html#types-of-job) on a [GPU node](https://docs.hpc.shef.ac.uk/en/latest/stanage/GPUComputingStanage.html#gsc.tab=0) with one **A100 (80 GB)**.
@@ -317,11 +317,20 @@ Stanage has a single `gpu` partition and you pick the GPU type with
 architecture you get; to accept A100 or H100 but not H100 NVL (often a
 shorter queue), use `--gres=gpu:1 --exclude=gpu[31-35]`. `--qos=gpu` is required.
 
-`--mem=8G --time=00:30:00` is sized for the tiny default model
-(`gemma3:270m`). For a larger model scale `--mem` (see the
-[table below](#choosing-a-model)) but keep `--time` to about an hour, e.g.
-`--mem=24G --time=01:00:00` for an 8B–14B model. Bigger requests queue longer
-(see [Selecting resources](#selecting-resources)). Then, from the repo directory:
+`--mem=82G --cpus-per-task=8` is the documented
+[per-GPU minimum for an A100](https://docs.hpc.shef.ac.uk/en/latest/stanage/GPUComputingStanage.html)
+(roughly a fair share of a node's host RAM and CPUs), so keep it even for small
+models: interactive sessions otherwise default to only a few GB of host memory,
+which can cause CPU-to-GPU transfer failures. Keep `--time` to about an hour
+(`--time=00:30:00` is plenty for the tiny default model, `gemma3:270m`); bigger
+requests queue longer (see [Selecting resources](#selecting-resources)). For an
+H100 NVL (94 GB VRAM) the documented minimum is 96 GB host RAM and 12 CPUs:
+
+```bash
+srun --partition=gpu --qos=gpu --gres=gpu:h100nvl:1 --mem=96G --cpus-per-task=12 --time=01:00:00 --pty bash
+```
+
+Then, from the repo directory:
 
 ```bash
 source scripts/start_ollama.sh
@@ -364,20 +373,21 @@ OLLAMA_IDLE_TIMEOUT=30 source scripts/start_ollama.sh   # override duration
 
 ## Choosing a model
 
-Set `MODEL` before running the setup and start scripts. On a single 80 GB
-A100 you have plenty of room:
+Set `MODEL` before running the setup and start scripts. What limits the model
+you can run is GPU memory (VRAM), not host RAM: an A100 has 80 GB, an H100 NVL
+has 94 GB.
 
-| `MODEL`           | Size (quantized) | Good for                              | Suggested `--mem` |
-| ----------------- | ---------------- | ------------------------------------- | ------------------ |
-| `gemma3:270m`     | ~300 MB          | Tiny default, quick smoke test        | 8G                  |
-| `llama3.1:8b`     | ~5 GB            | Fast, general chat                    | 16G                 |
-| `qwen2.5:14b`     | ~9 GB            | Stronger reasoning, coding            | 24G                 |
-| `gpt-oss:20b`     | ~14 GB           | Open-weight, strong general model     | 32G                 |
-| `llama3.3:70b`    | ~43 GB           | Highest quality; fits one A100        | 82G                 |
+| `MODEL`           | Size (quantized) | Good for                              | Fits on              |
+| ----------------- | ---------------- | ------------------------------------- | -------------------- |
+| `gemma3:270m`     | ~300 MB          | Tiny default, quick smoke test        | Any GPU              |
+| `llama3.1:8b`     | ~5 GB            | Fast, general chat                    | Any GPU              |
+| `qwen2.5:14b`     | ~9 GB            | Stronger reasoning, coding            | Any GPU              |
+| `gpt-oss:20b`     | ~14 GB           | Open-weight, strong general model     | Any GPU              |
+| `llama3.3:70b`    | ~43 GB           | Highest quality                       | A100 80 GB or larger |
 
-The `--mem` column is a starting point (weights plus headroom for the
-runtime), not a measured value — see [Selecting resources](#selecting-resources)
-below for how to size `--mem`/`--time` properly once you know your workload.
+Sizes are weights only; leave VRAM headroom for the context (KV cache). Use
+the same `--mem`/`--cpus-per-task` for all of them (see
+[step 3](#3-grab-a-gpu)).
 
 Override the default without editing any file — set it once and it flows
 through every script:
@@ -392,19 +402,23 @@ Browse the full catalogue at <https://ollama.com/library>.
 
 ### Selecting resources
 
-The `--mem`/`--time` values above are starting points, not a formula — actual
-usage depends on your model, prompt lengths, and how long you chat for.
+The values above are starting points, not a formula — actual usage depends on
+your model, prompt lengths, and how long you chat for.
 Stanage's [Choosing appropriate resources](https://docs.hpc.shef.ac.uk/en/latest/hpc/Choosing-appropriate-resources.html#gsc.tab=0)
 guidance is worth reading before running anything beyond a quick test:
 
 - **Bigger requests queue longer.** `--mem`/`--time` are a reservation, not a
   measurement — the scheduler has to find a slot with *at least* that much
-  free before your job can start, so padding "just in case" directly costs
-  you wait time on a busy cluster. A request bigger than the cluster can ever
-  satisfy will simply never start.
+  free before your job can start. For GPU jobs, though, stay at or above the
+  [documented per-GPU minimums](https://docs.hpc.shef.ac.uk/en/latest/stanage/GPUComputingStanage.html)
+  (A100: 82 GB / 8 CPUs; H100 NVL: 96 GB / 12 CPUs) and keep `--time` short.
+- **Watch the GPU.** Run `nvidia-smi` in the job to see GPU utilisation and
+  VRAM use.
+- **Know which kind of out-of-memory you hit.** Only raise `--mem` after a
+  *host* OOM (the job is killed by SLURM). A *CUDA* OOM means the model doesn't
+  fit in VRAM: use a smaller model or a bigger GPU.
 - **Measure, don't guess.** After a job finishes, run `seff <job-id>` to see
-  actual memory and time used, and size your next request from that instead
-  of copying the defaults in this README.
+  actual memory and time used, and size your next request from that.
 - **Jobs are killed, not throttled, if they exceed a limit** — request
   comfortably above what `seff` shows, not exactly at it.
 
@@ -459,7 +473,7 @@ SLURM resource request you'd adapt for larger runs (batch jobs may run up to
 | `no active SLURM job detected` when running `00_setup.sh` | You ran it directly on a login node. Launch it with `sbatch` (or `srun`) as shown in step 2. |
 | `apptainer: command not found` / `'apptainer' not found` | You're on a login node, where Apptainer isn't installed (it's only on the worker nodes, and there's no module to load). Run it inside a job: `sbatch` for setup (step 2), a batch job (step 3) or short GPU session (step 4) for the model. |
 | `image not found` / `command not found` for the model | Run setup first (step 2). |
-| Out-of-memory / CUDA OOM | Use a smaller `MODEL`, or request more with `--mem` / a bigger GPU (`--gres=gpu:h100nvl:1` for 94 GB). |
+| Out-of-memory / CUDA OOM | CUDA OOM: use a smaller `MODEL` or a bigger GPU (`--gres=gpu:h100nvl:1` for 94 GB). Host OOM (killed by SLURM): raise `--mem`. |
 | First response is slow, then fast | Normal — the weights load from Lustre into VRAM on first use. |
 | Home quota full | Confirm `OLLAMA_MODELS` points at `/mnt/parscratch/...` (it does by default). Never let Ollama write to `~/.ollama`. |
 | Server won't start | Check the log printed at startup: `cat "$OLLAMA_LOG"` (e.g. `/mnt/parscratch/users/$USER/ollama/server.<job-id>.log`). |
