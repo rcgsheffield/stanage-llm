@@ -492,6 +492,26 @@ See [`examples/batch_inference.sbatch`](examples/batch_inference.sbatch) for the
 SLURM resource request you'd adapt for larger runs (batch jobs may run up to
 96 hours).
 
+### Batch at scale with vLLM + Snakemake
+
+For a whole dataset (thousands of prompts or more), use
+[`workflows/vllm-batch/`](workflows/vllm-batch/README.md) instead.
+[Snakemake](https://snakemake.readthedocs.io/) splits your JSONL into shards
+and submits one GPU job per shard. Each job loads the model once with
+[vLLM](https://docs.vllm.ai/)'s offline engine, which batches requests
+continuously and is typically several times faster than Ollama on the same
+GPU. Finished shards are kept, so a failed or timed-out run resumes where it
+stopped:
+
+```bash
+sbatch --mem=16G --cpus-per-task=4 --time=03:00:00 --wrap="bash workflows/vllm-batch/scripts/setup.sh"  # once
+sbatch workflows/vllm-batch/run_workflow.sbatch --config input=my_prompts.jsonl run_name=exp1
+```
+
+It takes the same `{"id", "prompt"}` input format, but models are Hugging Face
+repo ids (e.g. `Qwen/Qwen2.5-7B-Instruct`), not Ollama tags. Stick with the
+Ollama path above for trying models, small batches, or GGUF-only models.
+
 ---
 
 ## Troubleshooting

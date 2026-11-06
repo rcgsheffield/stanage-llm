@@ -1,0 +1,56 @@
+# Configuration for the Snakemake + vLLM batch workflow.
+#
+# Override any key on the command line without editing this file, e.g.
+#   sbatch workflows/vllm-batch/run_workflow.sbatch \
+#       --config input=my_prompts.jsonl run_name=exp1 model=Qwen/Qwen2.5-7B-Instruct
+
+# JSONL of prompts, one record per line: {"id": "...", "prompt": "..."}
+# (or "messages": [...] for a full chat). Relative paths are resolved from
+# the repo root.
+input: examples/prompts.jsonl
+
+# Results go to $PARSCRATCH/vllm/runs/<run_name>/. Use a new run_name per
+# experiment so earlier results are kept.
+run_name: default
+
+# Hugging Face model repo id (safetensors weights, NOT an Ollama tag).
+# Gated models (Llama, Gemma, ...) also need HF_TOKEN in your environment at
+# submit time -- see README.md.
+model: Qwen/Qwen2.5-0.5B-Instruct
+
+# Branch, tag or commit SHA. The download step resolves it to an exact commit
+# SHA and every GPU job uses that SHA, so all shards see identical weights.
+revision: main
+
+# Prompts per GPU job. Each job pays the model-load cost once, so make shards
+# big enough to amortise it (thousands for real runs) but small enough that
+# one shard finishes well inside `runtime_min`.
+shard_size: 1000
+
+# Optional system prompt prepended to every "prompt"-style record.
+system_prompt: null
+
+sampling:
+  temperature: 0.7
+  top_p: 0.95
+  max_tokens: 512
+  # Fixed seed for reproducible sampling. null = random.
+  seed: 0
+
+# Optional JSON Schema to force structured (JSON) output, e.g.
+#   json_schema: {"type": "object", "properties": {"label": {"enum": ["pos", "neg"]}}, "required": ["label"]}
+json_schema: null
+
+# Passed straight to vllm.LLM(...). See https://docs.vllm.ai/ for more.
+vllm:
+  max_model_len: 8192
+  gpu_memory_utilization: 0.90
+  enable_prefix_caching: true
+  dtype: auto
+
+# GPU resources per shard job. gpu_type: a100 | h100 | h100nvl.
+# n_gpus > 1 shards one model across GPUs (tensor parallelism) -- only needed
+# for models too big for one GPU's VRAM.
+gpu_type: a100
+n_gpus: 1
+runtime_min: 120

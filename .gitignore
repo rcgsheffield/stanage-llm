@@ -9,3 +9,6 @@ results*.jsonl
 # Python
 __pycache__/
 *.pyc
+
+# Snakemake bookkeeping (locks, job metadata)
+.snakemake/

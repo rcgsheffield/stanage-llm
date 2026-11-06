@@ -1,0 +1,215 @@
+# Snakemake + vLLM batch inference on Stanage.
+#
+#   input.jsonl --split--> shards/NNNNN.jsonl --infer (GPU job each)--> out/NNNNN.jsonl --merge--> results.jsonl
+#
+# Run it via run_workflow.sbatch (see README.md), which sources config/env.sh
+# and points Snakemake at the Stanage SLURM profile. Only `infer` is submitted
+# as a SLURM job; the other rules are cheap and run inside the controller job.
+
+import json
+import math
+import os
+import shlex
+import subprocess
+from pathlib import Path
+
+
+configfile: Path(workflow.basedir) / "config.yaml"
+
+
+REPO = Path(workflow.basedir).parents[1]
+SCRIPTS = Path(workflow.basedir) / "scripts"
+
+
+def require_env(name):
+    value = os.environ.get(name)
+    if not value:
+        raise WorkflowError(
+            f"${name} is not set. Run this workflow via run_workflow.sbatch, "
+            "or `source config/env.sh` first."
+        )
+    return value
+
+
+VLLM_DIR = require_env("VLLM_DIR")
+VLLM_SIF = require_env("VLLM_SIF")
+HF_HOME = require_env("HF_HOME")
+
+RUN = f"{VLLM_DIR}/runs/{config['run_name']}"
+
+INPUT = Path(config["input"])
+if not INPUT.is_absolute():
+    INPUT = REPO / INPUT
+if not INPUT.is_file():
+    raise WorkflowError(f"Input file not found: {INPUT}")
+
+# The shard count must be known when the DAG is built, so count records here.
+# split.py re-validates the file and fails loudly if this count is stale.
+with INPUT.open(encoding="utf-8") as _f:
+    N_RECORDS = sum(1 for line in _f if line.strip())
+SHARD_SIZE = int(config["shard_size"])
+SHARDS = [f"{i:05d}" for i in range(math.ceil(N_RECORDS / SHARD_SIZE))]
+
+# Documented per-GPU minimum host RAM (MB) and CPUs on Stanage:
+# https://docs.hpc.shef.ac.uk/en/latest/stanage/GPUComputingStanage.html
+GPU_HOST_RESOURCES = {
+    "a100": (82_000, 8),
+    "h100": (82_000, 8),
+    "h100nvl": (96_000, 12),
+}
+GPU_TYPE = config["gpu_type"]
+if GPU_TYPE not in GPU_HOST_RESOURCES:
+    raise WorkflowError(
+        f"gpu_type must be one of {sorted(GPU_HOST_RESOURCES)}, got {GPU_TYPE!r}"
+    )
+N_GPUS = int(config["n_gpus"])
+MEM_PER_GPU, CPUS_PER_GPU = GPU_HOST_RESOURCES[GPU_TYPE]
+
+# Everything that changes the generated text. Passed to the scripts as a JSON
+# param, so editing any of it makes Snakemake re-run the affected shards.
+SETTINGS = json.dumps(
+    {
+        "system_prompt": config.get("system_prompt"),
+        "sampling": config["sampling"],
+        "json_schema": config.get("json_schema"),
+        "vllm": config["vllm"],
+        "n_gpus": N_GPUS,
+    },
+    sort_keys=True,
+)
+
+
+def git_commit():
+    try:
+        return subprocess.run(
+            ["git", "-C", str(REPO), "rev-parse", "HEAD"],
+            capture_output=True,
+            text=True,
+            check=True,
+        ).stdout.strip()
+    except (OSError, subprocess.CalledProcessError):
+        return None
+
+
+# Recorded in run_metadata.json only; deliberately NOT a rerun trigger.
+PROVENANCE = json.dumps(
+    {
+        **json.loads(SETTINGS),
+        "input": str(INPUT),
+        "shard_size": SHARD_SIZE,
+        "gpu_type": GPU_TYPE,
+        "container_image": os.environ.get("VLLM_IMAGE"),
+        "git_commit": git_commit(),
+    },
+    sort_keys=True,
+)
+
+
+# Every rule runs inside the pinned vLLM image (it also has Python and
+# huggingface_hub), so the whole pipeline uses one fixed software stack. The
+# profile turns this on with `software-deployment-method: apptainer`.
+container: VLLM_SIF
+
+
+# Runs before every rule's command, inside the container. Caches go to
+# fastdata, not the 50 GB home directory: vLLM, torch.compile and Triton write
+# several GB of compiled kernels on first use.
+CACHE = Path(VLLM_DIR) / "cache"
+shell.prefix(
+    f"set -euo pipefail; "
+    f"export HF_HOME={shlex.quote(HF_HOME)}; "
+    f"export XDG_CACHE_HOME={shlex.quote(str(CACHE))}; "
+    f"export VLLM_CACHE_ROOT={shlex.quote(str(CACHE / 'vllm'))}; "
+    f"export TRITON_CACHE_DIR={shlex.quote(str(CACHE / 'triton'))}; "
+)
+
+
+wildcard_constraints:
+    shard=r"\d{5}",
+
+
+localrules:
+    all,
+    download_model,
+    split,
+    merge,
+
+
+rule all:
+    input:
+        f"{RUN}/results.jsonl",
+        f"{RUN}/run_metadata.json",
+
+
+# Runs in the CPU controller job, never on a GPU: the GPU jobs then load the
+# pinned commit from $HF_HOME fully offline. HF_TOKEN, if you set one for a
+# gated model, is inherited from your environment and never logged.
+rule download_model:
+    output:
+        f"{RUN}/model.json",
+    log:
+        f"{RUN}/logs/download_model.log",
+    params:
+        script=SCRIPTS / "download_model.py",
+        model=config["model"],
+        revision=config["revision"],
+    shell:
+        "python3 {params.script:q} {params.model:q} {params.revision:q} {output:q}"
+        " > {log:q} 2>&1"
+
+
+rule split:
+    input:
+        INPUT,
+    output:
+        expand(f"{RUN}/shards/{{shard}}.jsonl", shard=SHARDS),
+    log:
+        f"{RUN}/logs/split.log",
+    params:
+        script=SCRIPTS / "split.py",
+        shard_size=SHARD_SIZE,
+    shell:
+        "python3 {params.script:q} {input:q} {params.shard_size} {output:q} > {log:q} 2>&1"
+
+
+# The only rule submitted to SLURM: one GPU job per shard.
+rule infer:
+    input:
+        shard=f"{RUN}/shards/{{shard}}.jsonl",
+        model=f"{RUN}/model.json",
+    output:
+        f"{RUN}/out/{{shard}}.jsonl",
+    log:
+        f"{RUN}/logs/infer.{{shard}}.log",
+    # One retry, with double the walltime, covers a node failure or a shard
+    # that narrowly ran out of time; a genuine bug fails twice and stops.
+    retries: 1
+    resources:
+        slurm_partition="gpu",
+        gres=f"gpu:{GPU_TYPE}:{N_GPUS}",
+        mem_mb=MEM_PER_GPU * N_GPUS,
+        cpus_per_task=CPUS_PER_GPU * N_GPUS,
+        runtime=lambda wildcards, attempt: int(config["runtime_min"]) * attempt,
+    params:
+        script=SCRIPTS / "infer.py",
+        settings=SETTINGS,
+    shell:
+        "HF_HUB_OFFLINE=1 python3 {params.script:q}"
+        " {input.shard:q} {output:q} {input.model:q} {params.settings:q} > {log:q} 2>&1"
+
+
+rule merge:
+    input:
+        model=f"{RUN}/model.json",
+        shards=expand(f"{RUN}/out/{{shard}}.jsonl", shard=SHARDS),
+    output:
+        results=f"{RUN}/results.jsonl",
+        metadata=f"{RUN}/run_metadata.json",
+    log:
+        f"{RUN}/logs/merge.log",
+    params:
+        script=SCRIPTS / "merge.py",
+        provenance=PROVENANCE,
+    shell:
+        "python3 {params.script:q} {output.results:q} {output.metadata:q} {input.model:q}"
+        " {params.provenance:q} {input.shards:q} > {log:q} 2>&1"

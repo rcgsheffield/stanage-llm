@@ -208,6 +208,27 @@ _ollama_session_server_pids() {
 # GPUs; set to 0 to disable.
 export OLLAMA_IDLE_TIMEOUT="${OLLAMA_IDLE_TIMEOUT:-15}"
 
+# --- vLLM batch workflow (workflows/vllm-batch/) ---------------------------
+# Only used by the Snakemake + vLLM workflow; the Ollama scripts ignore these.
+# Everything stays on fastdata for the same reasons as OLLAMA_DIR above.
+export VLLM_DIR="$PARSCRATCH/vllm"
+export VLLM_SIF="$VLLM_DIR/vllm.sif"
+
+# Pinned by digest, same convention as OLLAMA_IMAGE. This is the multi-arch
+# index digest of vllm/vllm-openai:v0.32.0-cu129 -- the CUDA 12.9 build, which
+# runs on a wider range of host NVIDIA drivers than the default CUDA 13 tags.
+# Bump it (and delete VLLM_SIF so setup re-pulls) for a newer vLLM. Tags:
+# https://hub.docker.com/r/vllm/vllm-openai/tags
+export VLLM_IMAGE="docker://vllm/vllm-openai@sha256:bc0445dac61accbf1c3b17fbb524a71eee0b1b32f55ba45952095e3be8991c3f"
+
+# Conda environment holding Snakemake + its SLURM executor plugin
+# (the workflow's controller side; vLLM itself lives in the container).
+export VLLM_ENV="$VLLM_DIR/env"
+
+# Hugging Face weights cache. vLLM loads safetensors from the HF Hub, not
+# Ollama's GGUF blobs, so models are downloaded separately into here.
+export HF_HOME="$PARSCRATCH/huggingface"
+
 # --- Which model to run -----------------------------------------------------
 # See the "Choosing a model" table in README.md. gemma3:270m is a tiny,
 # near-instant default (~300 MB) good for smoke-testing the setup before
