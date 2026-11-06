@@ -8,6 +8,11 @@ using Ollama inside an Apptainer container. Handles the HPC mechanics (SLURM,
 GPUs, containers, fastdata placement) so users go from "I have a Stanage
 account" to "I'm chatting with a model on an A100" in a few commands.
 
+## HPC usage
+
+_All_ scripts **must** follow the user guidance described on the [Stanage HPC documentation site](https://docs.hpc.shef.ac.uk/en/latest/hpc/index.html).
+Always search this website for authoritative instructions on using the task scheduler, utilising software packages, filestores, etc. etc.
+
 ## Repository Layout
 
 ```
