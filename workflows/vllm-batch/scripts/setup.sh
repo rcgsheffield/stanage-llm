@@ -68,10 +68,24 @@ fi
 if [[ -f "$VLLM_SIF" ]]; then
   echo "==> Image already present: $VLLM_SIF (skipping pull)"
 else
+  if [[ ! -w "$(dirname "$VLLM_SIF")" ]]; then
+    echo "ERROR: $VLLM_SIF does not exist and $(dirname "$VLLM_SIF") is not" >&2
+    echo "       writable. If VLLM_SIF points at a shared copy, ask its owner" >&2
+    echo "       to pull it, or unset VLLM_SIF to use your own fastdata." >&2
+    exit 1
+  fi
   echo "==> Pulling $VLLM_IMAGE (~10 GB, can take 30+ minutes) ..."
-  # Unpacking the layers needs a lot of temp space; keep it off node-local
-  # /tmp and the home quota.
-  APPTAINER_TMPDIR="$VLLM_DIR/tmp" apptainer pull "$VLLM_SIF.partial" "$VLLM_IMAGE"
+  # A killed earlier pull leaves a .partial behind, which apptainer refuses
+  # to overwrite.
+  rm -f "$VLLM_SIF.partial"
+  # Unpacking the layers needs >10 GB of temp space, so by default it goes on
+  # fastdata rather than /tmp or the home quota. Node-local scratch is faster
+  # for these many small files if the node has room: VLLM_PULL_TMPDIR=$TMPDIR.
+  # --disable-cache: the image is pinned by digest, so a layer cache in
+  # APPTAINER_CACHEDIR would never be reused -- just ~10 GB of duplicate small
+  # files on fastdata.
+  APPTAINER_TMPDIR="${VLLM_PULL_TMPDIR:-$VLLM_DIR/tmp}" \
+    apptainer pull --disable-cache "$VLLM_SIF.partial" "$VLLM_IMAGE"
   mv "$VLLM_SIF.partial" "$VLLM_SIF"
   echo "==> Image saved to $VLLM_SIF"
 fi

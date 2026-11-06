@@ -85,6 +85,24 @@ recommend. The module is `VLLM_PYTHON_MODULE` in
 it, so if you change that module, delete `/mnt/parscratch/users/$USER/vllm/env`
 and re-run setup.
 
+> **Why ~10 GB, and where it is stored.** Almost all of the image is the
+> CUDA/PyTorch stack that vLLM needs, so installing vLLM with pip wouldn't be
+> much smaller and would create tens of thousands of small files instead of one.
+> The SIF, weights and results all go on
+> [fastdata](https://docs.hpc.shef.ac.uk/en/latest/hpc/filestore.html)
+> (`/mnt/parscratch`): it has no quota and suits large files read by many nodes,
+> but it is **not backed up**. That's fine for the image, which setup can pull
+> again, but copy any results you want to keep. To share one image across a group,
+> pull it once to a shared location (e.g. under `/usr/local/community`) and have
+> everyone `export VLLM_SIF=/that/path/vllm.sif`. If the pull's temporary unpack
+> is slow on fastdata, you can use the node's local scratch instead, if the node
+> has enough space. The single quotes make `$TMPDIR` expand inside the job:
+>
+> ```bash
+> sbatch --mem=16G --cpus-per-task=4 --time=03:00:00 \
+>        --wrap='VLLM_PULL_TMPDIR=$TMPDIR bash workflows/vllm-batch/scripts/setup.sh'
+> ```
+
 **2. Run the bundled sample prompts** with the tiny default model:
 
 ```bash

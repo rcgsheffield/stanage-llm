@@ -212,7 +212,12 @@ export OLLAMA_IDLE_TIMEOUT="${OLLAMA_IDLE_TIMEOUT:-15}"
 # Only used by the Snakemake + vLLM workflow; the Ollama scripts ignore these.
 # Everything stays on fastdata for the same reasons as OLLAMA_DIR above.
 export VLLM_DIR="$PARSCRATCH/vllm"
-export VLLM_SIF="$VLLM_DIR/vllm.sif"
+# The image is ~10 GB, almost all of it the CUDA/PyTorch stack vLLM needs.
+# One big file read by every GPU job is what fastdata is for (no quota); it
+# isn't backed up, but setup can always re-pull it. A group can share one copy
+# (e.g. under /usr/local/community, the Stanage area for shared software) by
+# exporting VLLM_SIF=/path/to/vllm.sif before running anything.
+export VLLM_SIF="${VLLM_SIF:-$VLLM_DIR/vllm.sif}"
 
 # Pinned by digest, same convention as OLLAMA_IMAGE. This is the multi-arch
 # index digest of vllm/vllm-openai:v0.32.0-cu129 -- the CUDA 12.9 build, which
