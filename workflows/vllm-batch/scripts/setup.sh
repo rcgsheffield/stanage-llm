@@ -78,9 +78,16 @@ else
   # A killed earlier pull leaves a .partial behind, which apptainer refuses
   # to overwrite.
   rm -f "$VLLM_SIF.partial"
-  # Unpacking the layers needs >10 GB of temp space, so by default it goes on
-  # fastdata rather than /tmp or the home quota. Node-local scratch is faster
-  # for these many small files if the node has room: VLLM_PULL_TMPDIR=$TMPDIR.
+  # Unpacking the layers needs >10 GB of temp space and writes many small
+  # files. Node-local scratch ($TMPDIR, XFS, no quota, deleted at job end) is
+  # the right place: Lustre fastdata is slow for small files and lacks xattr
+  # support. Fall back to fastdata if $TMPDIR is unset/unwritable; override
+  # with VLLM_PULL_TMPDIR. The final SIF still lands on fastdata.
+  _pull_tmp="${VLLM_PULL_TMPDIR:-${TMPDIR:-}}"
+  if [[ -z "$_pull_tmp" || ! -d "$_pull_tmp" || ! -w "$_pull_tmp" ]]; then
+    _pull_tmp="$VLLM_DIR/tmp"
+  fi
+  echo "    (unpacking layers in $_pull_tmp)"
   # --disable-cache: the image is pinned by digest, so a layer cache in
   # APPTAINER_CACHEDIR would never be reused -- just ~10 GB of duplicate small
   # files on fastdata.
@@ -89,7 +96,7 @@ else
   # 137) at the "Creating SIF file" step. Cap its memory and threads.
   APPTAINER_MKSQUASHFS_MEM="${VLLM_MKSQUASHFS_MEM:-4G}" \
   APPTAINER_MKSQUASHFS_PROCS="${VLLM_MKSQUASHFS_PROCS:-2}" \
-  APPTAINER_TMPDIR="${VLLM_PULL_TMPDIR:-$VLLM_DIR/tmp}" \
+  APPTAINER_TMPDIR="$_pull_tmp" \
     apptainer pull --disable-cache "$VLLM_SIF.partial" "$VLLM_IMAGE"
   mv "$VLLM_SIF.partial" "$VLLM_SIF"
   echo "==> Image saved to $VLLM_SIF"

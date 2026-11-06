@@ -94,14 +94,11 @@ and re-run setup.
 > but it is **not backed up**. That's fine for the image, which setup can pull
 > again, but copy any results you want to keep. To share one image across a group,
 > pull it once to a shared location (e.g. under `/usr/local/community`) and have
-> everyone `export VLLM_SIF=/that/path/vllm.sif`. If the pull's temporary unpack
-> is slow on fastdata, you can use the node's local scratch instead, if the node
-> has enough space. The single quotes make `$TMPDIR` expand inside the job:
->
-> ```bash
-> sbatch --mem=16G --cpus-per-task=4 --time=03:00:00 \
->        --wrap='VLLM_PULL_TMPDIR=$TMPDIR bash workflows/vllm-batch/scripts/setup.sh'
-> ```
+> everyone `export VLLM_SIF=/that/path/vllm.sif`. The pull's temporary unpack
+> (many small files) uses the job's node-local scratch (`$TMPDIR`), which is
+> faster than fastdata for small files, and falls back to
+> `$VLLM_DIR/tmp` if that is unavailable. Set `VLLM_PULL_TMPDIR` to choose
+> another location.
 
 **2. Run the bundled sample prompts** with the tiny default model:
 
