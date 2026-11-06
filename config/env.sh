@@ -221,9 +221,26 @@ export VLLM_SIF="$VLLM_DIR/vllm.sif"
 # https://hub.docker.com/r/vllm/vllm-openai/tags
 export VLLM_IMAGE="docker://vllm/vllm-openai@sha256:bc0445dac61accbf1c3b17fbb524a71eee0b1b32f55ba45952095e3be8991c3f"
 
-# Conda environment holding Snakemake + its SLURM executor plugin
-# (the workflow's controller side; vLLM itself lives in the container).
+# Python virtual environment (venv) holding Snakemake + its SLURM executor
+# plugin (the workflow's controller side; vLLM itself lives in the container).
+# Built from the cluster Python module below, as the Stanage Python docs
+# recommend; setup and the controller job both load that module. Snakemake
+# needs Python >= 3.11 (`module spider Python` lists versions). A venv is tied
+# to the interpreter that built it: after changing the module, delete
+# $VLLM_ENV and re-run setup.
 export VLLM_ENV="$VLLM_DIR/env"
+export VLLM_PYTHON_MODULE="${VLLM_PYTHON_MODULE:-Python/3.13.5-GCCcore-14.3.0}"
+
+# Load VLLM_PYTHON_MODULE. Batch shells don't always inherit the `module`
+# function, so source the init script first if needed.
+_load_vllm_python_module() {
+  if ! type module >/dev/null 2>&1; then
+    # shellcheck disable=SC1091
+    source /etc/profile.d/modules.sh 2>/dev/null ||
+      source /etc/profile.d/lmod.sh 2>/dev/null || true
+  fi
+  module load "$VLLM_PYTHON_MODULE"
+}
 
 # Hugging Face weights cache. vLLM loads safetensors from the HF Hub, not
 # Ollama's GGUF blobs, so models are downloaded separately into here.

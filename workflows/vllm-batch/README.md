@@ -77,8 +77,13 @@ sbatch --mem=16G --cpus-per-task=4 --time=03:00:00 \
 ```
 
 This pulls the vLLM image to `/mnt/parscratch/users/$USER/vllm/vllm.sif`. It
-also creates a conda environment with Snakemake and its SLURM plugin
-(`module load Miniforge3`).
+also creates a Python virtual environment with Snakemake and its SLURM
+plugin, using the cluster's `Python` module and `venv` as the
+[Stanage Python docs](https://docs.hpc.shef.ac.uk/en/latest/stanage/software/apps/python.html)
+recommend. The module is `VLLM_PYTHON_MODULE` in
+[`config/env.sh`](../../config/env.sh). A venv is tied to the Python that built
+it, so if you change that module, delete `/mnt/parscratch/users/$USER/vllm/env`
+and re-run setup.
 
 **2. Run the bundled sample prompts** with the tiny default model:
 

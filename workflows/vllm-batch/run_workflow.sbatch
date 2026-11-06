@@ -43,6 +43,9 @@ if [[ ! -x "$VLLM_ENV/bin/snakemake" || ! -f "$VLLM_SIF" ]]; then
   echo '  sbatch --mem=16G --cpus-per-task=4 --time=03:00:00 --wrap="bash workflows/vllm-batch/scripts/setup.sh"' >&2
   exit 1
 fi
+# Load the Python module the venv was built from, then use the venv
+# (the pattern in the Stanage Python docs' batch example).
+_load_vllm_python_module
 export PATH="$VLLM_ENV/bin:$PATH"
 
 echo "Controller job $SLURM_JOB_ID on $(hostname); Snakemake $(snakemake --version)"

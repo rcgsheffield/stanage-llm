@@ -8,15 +8,16 @@
 #
 # It does two things, both into fastdata ($PARSCRATCH/vllm):
 #   1. Pulls the pinned vLLM container image (~10 GB; this is the slow part).
-#   2. Creates a conda environment with Snakemake and its SLURM executor
+#   2. Creates a Python virtual environment (module Python + venv, as the
+#      Stanage Python docs recommend) with Snakemake and its SLURM executor
 #      plugin -- the "controller" side of the workflow.
 #
 # Model weights are NOT downloaded here: the workflow's download_model step
 # fetches whichever model config.yaml names, so changing models needs no
 # re-setup. Safe to re-run; finished steps are skipped.
 #
-# Override the Miniforge module with STANAGE_MINIFORGE_MODULE=... if the
-# default name stops resolving (`module spider Miniforge3` lists versions).
+# The Python module is VLLM_PYTHON_MODULE in config/env.sh (override it with
+# an env var if the default stops resolving).
 
 set -euo pipefail
 
@@ -80,21 +81,16 @@ apptainer exec "$VLLM_SIF" python3 -c "import vllm; print('    ', vllm.__version
 echo
 
 # --- 2. Controller environment ----------------------------------------------
+_load_vllm_python_module
 if [[ -x "$VLLM_ENV/bin/snakemake" ]]; then
   echo "==> Environment already present: $VLLM_ENV (re-syncing packages)"
 else
-  if ! type module >/dev/null 2>&1; then
-    # Batch shells don't always inherit the module function.
-    # shellcheck disable=SC1091
-    source /etc/profile.d/modules.sh 2>/dev/null ||
-      source /etc/profile.d/lmod.sh 2>/dev/null || true
-  fi
-  module load "${STANAGE_MINIFORGE_MODULE:-Miniforge3}"
-  echo "==> Creating conda environment at $VLLM_ENV ..."
-  # Package cache on fastdata too, so the env doesn't fill the home quota.
-  CONDA_PKGS_DIRS="$VLLM_DIR/cache/conda-pkgs" \
-    conda create -y -p "$VLLM_ENV" -c conda-forge --override-channels python=3.12 pip
+  echo "==> Creating Python virtual environment at $VLLM_ENV ($(python --version)) ..."
+  # No --system-site-packages: keep the controller isolated from packages
+  # bundled with the Python module.
+  python -m venv "$VLLM_ENV"
 fi
+# pip cache on fastdata too, so the env doesn't fill the home quota.
 PIP_CACHE_DIR="$VLLM_DIR/cache/pip" \
   "$VLLM_ENV/bin/python" -m pip install --quiet -r "$WF/requirements.txt"
 echo "==> Snakemake $("$VLLM_ENV/bin/snakemake" --version) ready in $VLLM_ENV"
