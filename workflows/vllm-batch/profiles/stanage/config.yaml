@@ -1,0 +1,33 @@
+# Snakemake profile for Stanage (snakemake-executor-plugin-slurm).
+# Used by run_workflow.sbatch via --workflow-profile. Per-rule GPU resources
+# (partition, --gres, memory, CPUs, walltime) are set in the Snakefile.
+executor: slurm
+
+# Stanage's GPU partition requires --qos=gpu. Only the `infer` rule is
+# submitted to SLURM (everything else is a localrule), so a global QoS is safe.
+slurm-qos: gpu
+
+# Max shard jobs queued/running at once. Keeps you a polite neighbour on a
+# shared cluster; raise it if you have many shards and the queue is quiet.
+jobs: 8
+
+# Lustre (fastdata) metadata can lag between nodes; wait before declaring a
+# job's output missing.
+latency-wait: 60
+
+# Keep going with other shards if one fails; rerun the workflow to retry only
+# the failed ones.
+keep-going: true
+
+# Print the shell command of each job -- useful when reading logs.
+printshellcmds: true
+
+# If a previous controller job was killed mid-run, redo the shards it left
+# half-written instead of refusing to start.
+rerun-incomplete: true
+
+# Run every rule inside the container named in the Snakefile (the pinned vLLM
+# image). --nv exposes the GPU; --bind makes fastdata visible explicitly; on the CPU controller node it just prints a
+# harmless "no NVIDIA devices" warning.
+software-deployment-method: apptainer
+apptainer-args: "--nv --bind /mnt/parscratch"

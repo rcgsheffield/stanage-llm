@@ -208,6 +208,49 @@ _ollama_session_server_pids() {
 # GPUs; set to 0 to disable.
 export OLLAMA_IDLE_TIMEOUT="${OLLAMA_IDLE_TIMEOUT:-15}"
 
+# --- vLLM batch workflow (workflows/vllm-batch/) ---------------------------
+# Only used by the Snakemake + vLLM workflow; the Ollama scripts ignore these.
+# Everything stays on fastdata for the same reasons as OLLAMA_DIR above.
+export VLLM_DIR="$PARSCRATCH/vllm"
+# The image is ~10 GB, almost all of it the CUDA/PyTorch stack vLLM needs.
+# One big file read by every GPU job is what fastdata is for (no quota); it
+# isn't backed up, but setup can always re-pull it. A group can share one copy
+# (e.g. under /usr/local/community, the Stanage area for shared software) by
+# exporting VLLM_SIF=/path/to/vllm.sif before running anything.
+export VLLM_SIF="${VLLM_SIF:-$VLLM_DIR/vllm.sif}"
+
+# Pinned by digest, same convention as OLLAMA_IMAGE. This is the multi-arch
+# index digest of vllm/vllm-openai:v0.32.0-cu129 -- the CUDA 12.9 build, which
+# runs on a wider range of host NVIDIA drivers than the default CUDA 13 tags.
+# Bump it (and delete VLLM_SIF so setup re-pulls) for a newer vLLM. Tags:
+# https://hub.docker.com/r/vllm/vllm-openai/tags
+export VLLM_IMAGE="docker://vllm/vllm-openai@sha256:bc0445dac61accbf1c3b17fbb524a71eee0b1b32f55ba45952095e3be8991c3f"
+
+# Python virtual environment (venv) holding Snakemake + its SLURM executor
+# plugin (the workflow's controller side; vLLM itself lives in the container).
+# Built from the cluster Python module below, as the Stanage Python docs
+# recommend; setup and the controller job both load that module. Snakemake
+# needs Python >= 3.11 (`module spider Python` lists versions). A venv is tied
+# to the interpreter that built it: after changing the module, delete
+# $VLLM_ENV and re-run setup.
+export VLLM_ENV="$VLLM_DIR/env"
+export VLLM_PYTHON_MODULE="${VLLM_PYTHON_MODULE:-Python/3.13.5-GCCcore-14.3.0}"
+
+# Load VLLM_PYTHON_MODULE. Batch shells don't always inherit the `module`
+# function, so source the init script first if needed.
+_load_vllm_python_module() {
+  if ! type module >/dev/null 2>&1; then
+    # shellcheck disable=SC1091
+    source /etc/profile.d/modules.sh 2>/dev/null ||
+      source /etc/profile.d/lmod.sh 2>/dev/null || true
+  fi
+  module load "$VLLM_PYTHON_MODULE"
+}
+
+# Hugging Face weights cache. vLLM loads safetensors from the HF Hub, not
+# Ollama's GGUF blobs, so models are downloaded separately into here.
+export HF_HOME="$PARSCRATCH/huggingface"
+
 # --- Which model to run -----------------------------------------------------
 # See the "Choosing a model" table in README.md. gemma3:270m is a tiny,
 # near-instant default (~300 MB) good for smoke-testing the setup before

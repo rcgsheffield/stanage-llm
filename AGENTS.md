@@ -21,12 +21,17 @@ scripts/00_setup.sh        # one-time, CPU job (srun from login node): pulls ima
 scripts/start_ollama.sh    # sourced (not run) on a GPU node: starts server, defines `chat`/`stop_ollama`
 scripts/stop_ollama.sh     # stops the server
 examples/                  # optional extras: Python API client, batch SLURM job, sample prompts
+workflows/vllm-batch/      # batch-at-scale alternative: Snakemake (SLURM plugin) + vLLM offline engine,
+                           # one GPU job per shard; every rule runs in the pinned vLLM SIF (VLLM_IMAGE)
 ```
 
 ## Key Tooling
 
-- No package manager — plain bash + Python 3 standard library (Python scripts
-  optionally use the `openai` client if installed, but fall back gracefully).
+- No package manager for the Ollama path — plain bash + Python 3 standard
+  library (Python scripts optionally use the `openai` client if installed, but
+  fall back gracefully). The vLLM workflow's controller env (Snakemake + SLURM
+  plugin) is pinned in `workflows/vllm-batch/requirements.txt`; vLLM itself
+  comes only from the container.
 - Apptainer is preinstalled on Stanage **worker nodes only** (not login
   nodes), so every script that calls it must run inside a SLURM job; there is
   nothing to build or compile —
@@ -42,6 +47,10 @@ change:
 1. Shellcheck any modified script: `shellcheck scripts/*.sh`. Lint Python
    with `ruff check examples` and workflows with `actionlint`. CI also runs
    these, plus a `CITATION.cff` validation and a lychee Markdown link check.
+   For `workflows/vllm-batch/`, CI also runs `snakefmt --check`,
+   `snakemake --lint` and a profile dry run (`-n`). Locally, export stand-in
+   `VLLM_DIR`/`VLLM_SIF`/`HF_HOME` values first; the dry run also needs an
+   `apptainer` on PATH (a stub is fine, see `.github/workflows/snakemake.yml`).
 2. Confirm scripts still source `config/env.sh` correctly and don't hardcode
    paths that should come from it.
 3. If touching SLURM directives in `examples/batch_inference.sbatch`, sanity

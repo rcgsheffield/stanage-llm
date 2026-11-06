@@ -1,0 +1,5 @@
+# Controller-side Python packages, installed by scripts/setup.sh into
+# $VLLM_ENV. Everything the rules themselves run (vLLM, huggingface_hub,
+# Python) comes from the pinned container image instead.
+snakemake==9.27.1
+snakemake-executor-plugin-slurm==2.8.0
