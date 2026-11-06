@@ -76,7 +76,9 @@ else
   echo "==> Image saved to $VLLM_SIF"
 fi
 echo "==> vLLM version in image:"
-apptainer exec "$VLLM_SIF" python3 -c "import vllm; print('    ', vllm.__version__)" ||
+# Stanage binds $HOME into containers; ignore any `pip install --user`
+# packages in ~/.local so they cannot shadow the image's own vLLM.
+PYTHONNOUSERSITE=1 apptainer exec "$VLLM_SIF" python3 -c "import vllm; print('    ', vllm.__version__)" ||
   echo "    (import check failed without a GPU -- re-check inside a GPU job)" >&2
 echo
 

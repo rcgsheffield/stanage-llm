@@ -40,7 +40,7 @@ jobs:
         # for the binary even on a dry run. Nothing is executed in CI.
         run: |
           mkdir -p "$RUNNER_TEMP/bin"
-          printf '#!/bin/sh\necho "apptainer version 1.4.5"\n' > "$RUNNER_TEMP/bin/apptainer"
+          printf '#!/bin/sh\necho "apptainer version 1.5.4"\n' > "$RUNNER_TEMP/bin/apptainer"
           chmod +x "$RUNNER_TEMP/bin/apptainer"
           echo "$RUNNER_TEMP/bin" >> "$GITHUB_PATH"
       - name: snakefmt
