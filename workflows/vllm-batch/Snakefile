@@ -74,6 +74,10 @@ SETTINGS = json.dumps(
         "json_schema": config.get("json_schema"),
         "vllm": config["vllm"],
         "n_gpus": N_GPUS,
+        "gpu_type": GPU_TYPE,
+        "model": config["model"],
+        "revision": config["revision"],
+        "container_image": os.environ.get("VLLM_IMAGE") or VLLM_SIF,
     },
     sort_keys=True,
 )
@@ -91,20 +95,6 @@ def git_commit():
         return None
 
 
-# Recorded in run_metadata.json only; deliberately NOT a rerun trigger.
-PROVENANCE = json.dumps(
-    {
-        **json.loads(SETTINGS),
-        "input": str(INPUT),
-        "shard_size": SHARD_SIZE,
-        "gpu_type": GPU_TYPE,
-        "container_image": os.environ.get("VLLM_IMAGE"),
-        "git_commit": git_commit(),
-    },
-    sort_keys=True,
-)
-
-
 # Every rule runs inside the pinned vLLM image (it also has Python and
 # huggingface_hub), so the whole pipeline uses one fixed software stack. The
 # profile turns this on with `software-deployment-method: apptainer`.
@@ -113,10 +103,15 @@ container: VLLM_SIF
 
 # Runs before every rule's command, inside the container. Caches go to
 # fastdata, not the 50 GB home directory: vLLM, torch.compile and Triton write
-# several GB of compiled kernels on first use.
+# several GB of compiled kernels on first use. PYTHONNOUSERSITE stops packages
+# in ~/.local (bound into the container) shadowing the pinned image's. GIT_COMMIT
+# is provenance for merge.py; being an env var, not a param, it never triggers
+# a rerun.
 CACHE = Path(VLLM_DIR) / "cache"
 shell.prefix(
     f"set -euo pipefail; "
+    f"export PYTHONNOUSERSITE=1; "
+    f"export GIT_COMMIT={shlex.quote(git_commit() or '')}; "
     f"export HF_HOME={shlex.quote(HF_HOME)}; "
     f"export XDG_CACHE_HOME={shlex.quote(str(CACHE))}; "
     f"export VLLM_CACHE_ROOT={shlex.quote(str(CACHE / 'vllm'))}; "
@@ -181,7 +176,7 @@ rule infer:
         f"{RUN}/out/{{shard}}.jsonl",
     log:
         f"{RUN}/logs/infer.{{shard}}.log",
-    # One retry, with double the walltime, covers a node failure or a shard
+    # One retry, with double the walltime (capped at runtime_max_min), covers a node failure or a shard
     # that narrowly ran out of time; a genuine bug fails twice and stops.
     retries: 1
     resources:
@@ -189,7 +184,9 @@ rule infer:
         gres=f"gpu:{GPU_TYPE}:{N_GPUS}",
         mem_mb=MEM_PER_GPU * N_GPUS,
         cpus_per_task=CPUS_PER_GPU * N_GPUS,
-        runtime=lambda wildcards, attempt: int(config["runtime_min"]) * attempt,
+        runtime=lambda wildcards, attempt: min(
+            int(config["runtime_min"]) * attempt, int(config["runtime_max_min"])
+        ),
     params:
         script=SCRIPTS / "infer.py",
         settings=SETTINGS,
@@ -209,7 +206,7 @@ rule merge:
         f"{RUN}/logs/merge.log",
     params:
         script=SCRIPTS / "merge.py",
-        provenance=PROVENANCE,
+        settings=SETTINGS,
     shell:
         "python3 {params.script:q} {output.results:q} {output.metadata:q} {input.model:q}"
-        " {params.provenance:q} {input.shards:q} > {log:q} 2>&1"
+        " {params.settings:q} {input.shards:q} > {log:q} 2>&1"

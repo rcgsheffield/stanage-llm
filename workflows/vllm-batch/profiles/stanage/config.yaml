@@ -27,7 +27,7 @@ printshellcmds: true
 rerun-incomplete: true
 
 # Run every rule inside the container named in the Snakefile (the pinned vLLM
-# image). --nv exposes the GPU; on the CPU controller node it just prints a
+# image). --nv exposes the GPU; --bind makes fastdata visible explicitly; on the CPU controller node it just prints a
 # harmless "no NVIDIA devices" warning.
 software-deployment-method: apptainer
-apptainer-args: "--nv"
+apptainer-args: "--nv --bind /mnt/parscratch"

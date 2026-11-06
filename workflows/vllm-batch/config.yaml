@@ -54,3 +54,6 @@ vllm:
 gpu_type: a100
 n_gpus: 1
 runtime_min: 120
+# Ceiling for the walltime requested on the retry (minutes). 5760 = 96 h, the
+# Stanage batch maximum; lower it if your partition/queue allows less.
+runtime_max_min: 5760

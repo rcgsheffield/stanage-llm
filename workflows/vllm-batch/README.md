@@ -112,7 +112,7 @@ Results land in `/mnt/parscratch/users/$USER/vllm/runs/default/`:
 | File | Contents |
 | --- | --- |
 | `results.jsonl` | One line per input record, in input order: `id`, `prompt` (or `messages`), `response`, `finish_reason`, `prompt_tokens`, `completion_tokens` |
-| `run_metadata.json` | Provenance: model + commit SHA, sampling and vLLM settings, container image digest, git commit of this repo, token totals |
+| `run_metadata.json` | Provenance: model + commit SHA, sampling and vLLM settings, container image, git commit of this repo, token totals (settings under `settings`) |
 | `logs/` | Per-step logs; `infer.NNNNN.log` reports model-load time and tokens/s |
 
 **3. Your own data and model**:
@@ -176,7 +176,8 @@ results.
 
 - **`shard_size`**: each GPU job pays the model-load cost once. Use shards of
   thousands of prompts for real runs. Keep each shard comfortably inside
-  `runtime_min`. A failed shard is retried once with double the walltime.
+  `runtime_min`. A failed shard is retried once with double the walltime, capped at
+  `runtime_max_min` (default 96 h, the Stanage batch maximum).
 - **Parallelism**: `jobs: 8` in
   [`profiles/stanage/config.yaml`](profiles/stanage/config.yaml) caps how many
   shard jobs are queued at once. It's a shared cluster; raise it with care.
@@ -185,6 +186,8 @@ results.
   extraction.
 - **Shared prompt prefixes** (a long instruction reused across records) are
   cached automatically (`enable_prefix_caching: true`).
+- **Custom model code**: `*.py` files are downloaded, but `trust_remote_code`
+  is not enabled, so models that need it are not supported.
 - **Reproducibility**: `sampling.seed` is fixed by default, and the model
   commit and container digest are recorded. For the most deterministic output,
   set `temperature: 0`.

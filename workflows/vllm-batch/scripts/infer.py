@@ -8,7 +8,7 @@ Loads the model ONCE, hands the whole shard to vLLM in a single call (vLLM
 schedules it with continuous batching, which is where the throughput comes
 from), and writes one result per input record, in input order:
 
-    {"id", "prompt" | "messages", "response", "finish_reason",
+    {"id", "prompt" [+ "system"] | "messages", "response", "finish_reason",
      "prompt_tokens", "completion_tokens"}
 
 MODEL.json comes from download_model.py and pins the exact commit SHA. The
@@ -52,11 +52,14 @@ def main() -> None:
         sampling_kwargs["structured_outputs"] = StructuredOutputsParams(
             json=settings["json_schema"]
         )
+    # Seed the engine, not each request: a per-request seed forces slow
+    # per-request RNGs and gives every prompt the same stream.
+    seed = sampling_kwargs.pop("seed", None)
     sampling = SamplingParams(**sampling_kwargs)
 
     engine_kwargs = dict(settings["vllm"])
-    if settings["sampling"].get("seed") is not None:
-        engine_kwargs["seed"] = settings["sampling"]["seed"]
+    if seed is not None:
+        engine_kwargs["seed"] = seed
 
     t0 = time.monotonic()
     llm = LLM(
@@ -79,9 +82,12 @@ def main() -> None:
             completion = res.outputs[0]
             n_out_tokens += len(completion.token_ids)
             result = {"id": rec["id"]}
-            result["messages" if "messages" in rec else "prompt"] = (
-                rec.get("messages", rec.get("prompt"))
-            )
+            if isinstance(rec.get("messages"), list):
+                result["messages"] = rec["messages"]
+            else:
+                result["prompt"] = rec["prompt"]
+                if "system" in rec:
+                    result["system"] = rec["system"]
             result.update(
                 response=completion.text,
                 finish_reason=completion.finish_reason,

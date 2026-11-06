@@ -41,9 +41,9 @@ def main() -> None:
     path = snapshot_download(
         repo_id=model,
         revision=sha,
-        # Only what vLLM needs; skips duplicate .bin/.pth/GGUF/ONNX copies
+        # Only what vLLM needs (*.py: custom tokenizer/model code); skips duplicate .bin/.pth/GGUF/ONNX copies
         # some repos ship alongside the safetensors.
-        allow_patterns=["*.json", "*.safetensors", "*.model", "*.txt", "*.tiktoken", "*.jinja"],
+        allow_patterns=["*.json", "*.safetensors", "*.model", "*.txt", "*.tiktoken", "*.jinja", "*.py"],
     )
     if not any(Path(path).glob("*.safetensors")):
         sys.exit(
