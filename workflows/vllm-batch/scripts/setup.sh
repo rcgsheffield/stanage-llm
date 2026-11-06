@@ -84,6 +84,11 @@ else
   # --disable-cache: the image is pinned by digest, so a layer cache in
   # APPTAINER_CACHEDIR would never be reused -- just ~10 GB of duplicate small
   # files on fastdata.
+  # mksquashfs sizes its buffers from the node's *total* RAM, not the SLURM
+  # cgroup limit, so on a big node it overruns --mem and is OOM-killed (exit
+  # 137) at the "Creating SIF file" step. Cap its memory and threads.
+  APPTAINER_MKSQUASHFS_MEM="${VLLM_MKSQUASHFS_MEM:-4G}" \
+  APPTAINER_MKSQUASHFS_PROCS="${VLLM_MKSQUASHFS_PROCS:-2}" \
   APPTAINER_TMPDIR="${VLLM_PULL_TMPDIR:-$VLLM_DIR/tmp}" \
     apptainer pull --disable-cache "$VLLM_SIF.partial" "$VLLM_IMAGE"
   mv "$VLLM_SIF.partial" "$VLLM_SIF"
