@@ -226,15 +226,31 @@ export VLLM_SIF="${VLLM_SIF:-$VLLM_DIR/vllm.sif}"
 # https://hub.docker.com/r/vllm/vllm-openai/tags
 export VLLM_IMAGE="docker://vllm/vllm-openai@sha256:bc0445dac61accbf1c3b17fbb524a71eee0b1b32f55ba45952095e3be8991c3f"
 
+# Overlay for a bug in the image above: it ships torchcodec 0.17.0 built for
+# CUDA 13 (needs libnvrtc.so.13 / libcudart.so.13), but the image is CUDA 12.9,
+# so `import vllm` fails. vLLM's requirements only say `torchcodec >= 0.14`, so
+# the image build picked up the CUDA 13 wheel. setup.sh installs this CUDA 12.9
+# build of torchcodec (a few MB, --no-deps) into VLLM_OVERLAY_DIR on fastdata,
+# and the Snakefile puts that directory first on PYTHONPATH inside the container.
+# Drop both once a newer image fixes it (check with `import torchcodec`).
+export VLLM_OVERLAY_DIR="$VLLM_DIR/pylibs"
+export VLLM_TORCHCODEC_SPEC="${VLLM_TORCHCODEC_SPEC:-torchcodec==0.16.0+cu129}"
+export VLLM_TORCHCODEC_INDEX="${VLLM_TORCHCODEC_INDEX:-https://download.pytorch.org/whl/cu129}"
+
 # Python virtual environment (venv) holding Snakemake + its SLURM executor
 # plugin (the workflow's controller side; vLLM itself lives in the container).
-# Built from the cluster Python module below, as the Stanage Python docs
-# recommend; setup and the controller job both load that module. Snakemake
-# needs Python >= 3.11 (`module spider Python` lists versions). A venv is tied
-# to the interpreter that built it: after changing the module, delete
-# $VLLM_ENV and re-run setup.
+# Built from the cluster module below; setup and the controller job both load
+# it. Snakemake needs Python >= 3.11.
+#
+# This must be an architecture-independent Python: Snakemake's SLURM plugin
+# also runs the venv's Python on the *GPU* nodes (AMD EPYC), while the
+# login/CPU nodes are Intel. The `Python/*` modules in the el9 tree are built
+# for the Intel CPUs and die with "Illegal instruction" (SIGILL) on the GPU
+# nodes, so use Anaconda3, which lives in the arch-independent `common` tree.
+# A venv is tied to the interpreter that built it: after changing the module,
+# delete $VLLM_ENV and re-run setup.
 export VLLM_ENV="$VLLM_DIR/env"
-export VLLM_PYTHON_MODULE="${VLLM_PYTHON_MODULE:-Python/3.13.5-GCCcore-14.3.0}"
+export VLLM_PYTHON_MODULE="${VLLM_PYTHON_MODULE:-Anaconda3/2025.06-1}"
 
 # Load VLLM_PYTHON_MODULE. Batch shells don't always inherit the `module`
 # function, so source the init script first if needed.

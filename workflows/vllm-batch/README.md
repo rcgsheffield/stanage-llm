@@ -78,7 +78,7 @@ sbatch --mem=16G --cpus-per-task=4 --time=03:00:00 \
 
 This pulls the vLLM image to `/mnt/parscratch/users/$USER/vllm/vllm.sif`. It
 also creates a Python virtual environment with Snakemake and its SLURM
-plugin, using the cluster's `Python` module and `venv` as the
+plugin, using the cluster's `Anaconda3` module and `venv` (the `Python` modules crash on the AMD GPU nodes, see `config/env.sh`), as the
 [Stanage Python docs](https://docs.hpc.shef.ac.uk/en/latest/stanage/software/apps/python.html)
 recommend. The module is `VLLM_PYTHON_MODULE` in
 [`config/env.sh`](../../config/env.sh). A venv is tied to the Python that built
@@ -200,6 +200,16 @@ results.
   hard. Check `squeue --me` that it has really gone, then run the same
   command once with `--unlock` added, and once more without it.
 - **A new experiment?** Use a new `run_name` so earlier results are kept.
+
+## Known image issue: torchcodec overlay
+
+The pinned image ships a `torchcodec` built for CUDA 13, which cannot load in a
+CUDA 12.9 image, so `import vllm` fails (`libnvrtc.so.13: cannot open shared
+object file`). Setup therefore installs a CUDA 12.9 `torchcodec`
+(`VLLM_TORCHCODEC_SPEC` in [`config/env.sh`](../../config/env.sh); a few MB)
+into `/mnt/parscratch/users/$USER/vllm/pylibs`, and every rule puts that
+directory first on `PYTHONPATH`. Remove the overlay when a newer image no longer
+needs it (check `import torchcodec` inside the image).
 
 ## Upgrading vLLM
 

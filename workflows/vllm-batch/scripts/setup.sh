@@ -47,7 +47,7 @@ fi
 # directories are left alone, as in scripts/00_setup.sh.
 umask 077
 for _dir in "$PARSCRATCH" "$VLLM_DIR" "$VLLM_DIR/cache" "$VLLM_DIR/runs" \
-            "$VLLM_DIR/tmp" "$HF_HOME" \
+            "$VLLM_DIR/tmp" "$VLLM_OVERLAY_DIR" "$HF_HOME" \
             "$PARSCRATCH/apptainer" "$APPTAINER_CACHEDIR"; do
   if [[ ! -d "$_dir" ]]; then
     mkdir -m 700 "$_dir" 2>/dev/null || [[ -d "$_dir" ]] || {
@@ -106,6 +106,20 @@ echo "==> vLLM version in image:"
 # packages in ~/.local so they cannot shadow the image's own vLLM.
 PYTHONNOUSERSITE=1 apptainer exec "$VLLM_SIF" python3 -c "import vllm; print('    ', vllm.__version__)" ||
   echo "    (import check failed without a GPU -- re-check inside a GPU job)" >&2
+echo
+
+# --- 1b. torchcodec overlay (works around a CUDA 13 build in the image) -------
+# See VLLM_TORCHCODEC_SPEC in config/env.sh. Installed with the image's own pip
+# so the wheel matches its Python, into fastdata (a few MB, no dependencies).
+if [[ -d "$VLLM_OVERLAY_DIR/torchcodec" ]]; then
+  echo "==> torchcodec overlay already present: $VLLM_OVERLAY_DIR"
+else
+  echo "==> Installing $VLLM_TORCHCODEC_SPEC into $VLLM_OVERLAY_DIR ..."
+  PYTHONNOUSERSITE=1 PIP_CACHE_DIR="$VLLM_DIR/cache/pip" \
+    apptainer exec --bind /mnt/parscratch "$VLLM_SIF" \
+    pip install --quiet --no-deps --target "$VLLM_OVERLAY_DIR" \
+      --index-url "$VLLM_TORCHCODEC_INDEX" "$VLLM_TORCHCODEC_SPEC"
+fi
 echo
 
 # --- 2. Controller environment ----------------------------------------------

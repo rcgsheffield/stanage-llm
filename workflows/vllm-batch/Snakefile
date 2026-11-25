@@ -34,6 +34,7 @@ def require_env(name):
 VLLM_DIR = require_env("VLLM_DIR")
 VLLM_SIF = require_env("VLLM_SIF")
 HF_HOME = require_env("HF_HOME")
+OVERLAY = require_env("VLLM_OVERLAY_DIR")
 
 RUN = f"{VLLM_DIR}/runs/{config['run_name']}"
 
@@ -111,6 +112,7 @@ CACHE = Path(VLLM_DIR) / "cache"
 shell.prefix(
     f"set -euo pipefail; "
     f"export PYTHONNOUSERSITE=1; "
+    f"export PYTHONPATH={shlex.quote(OVERLAY)}${{{{PYTHONPATH:+:$PYTHONPATH}}}}; "
     f"export GIT_COMMIT={shlex.quote(git_commit() or '')}; "
     f"export HF_HOME={shlex.quote(HF_HOME)}; "
     f"export XDG_CACHE_HOME={shlex.quote(str(CACHE))}; "
