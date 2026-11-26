@@ -31,12 +31,12 @@ set -euo pipefail
 # Prompts and completions are written under $VLLM_DIR; keep them private.
 umask 077
 
-if [[ ! -f config/env.sh ]]; then
-  echo "ERROR: submit this from the repo root (config/env.sh not found in $PWD)." >&2
+if [[ ! -f config/vllm.sh ]]; then
+  echo "ERROR: submit this from the repo root (config/vllm.sh not found in $PWD)." >&2
   exit 1
 fi
-# shellcheck source=config/env.sh
-source config/env.sh
+# shellcheck source=config/vllm.sh
+source config/vllm.sh
 
 if [[ ! -x "$VLLM_ENV/bin/snakemake" || ! -f "$VLLM_SIF" ]]; then
   echo "ERROR: one-time setup not done. From a login node, in the repo root, run:" >&2

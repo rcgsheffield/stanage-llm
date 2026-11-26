@@ -8,19 +8,19 @@ on:
     branches: [ main ]
     paths:
       - 'workflows/**'
-      - 'config/env.sh'
+      - 'config/**'
       - '.github/workflows/snakemake.yml'
   pull_request:
     paths:
       - 'workflows/**'
-      - 'config/env.sh'
+      - 'config/**'
       - '.github/workflows/snakemake.yml'
 
 jobs:
   lint:
     runs-on: ubuntu-24.04
     env:
-      # Stand-ins for the fastdata paths config/env.sh sets on Stanage; the
+      # Stand-ins for the fastdata paths config/vllm.sh sets on Stanage; the
       # dry run only builds the job graph, it never touches these.
       PARSCRATCH: /tmp/parscratch
       VLLM_DIR: /tmp/parscratch/vllm

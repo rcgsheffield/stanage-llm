@@ -26,8 +26,8 @@ set -euo pipefail
 # Resolve the repo root from this script's location, then load config.
 HERE="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 ROOT="$(cd "$HERE/.." && pwd)"
-# shellcheck source=../config/env.sh
-source "$ROOT/config/env.sh"
+# shellcheck source=../config/ollama.sh
+source "$ROOT/config/ollama.sh"
 
 _check_ollama_host_loopback || exit 1
 

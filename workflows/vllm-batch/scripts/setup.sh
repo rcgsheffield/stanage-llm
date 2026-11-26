@@ -16,7 +16,7 @@
 # fetches whichever model config.yaml names, so changing models needs no
 # re-setup. Safe to re-run; finished steps are skipped.
 #
-# The Python module is VLLM_PYTHON_MODULE in config/env.sh (override it with
+# The Python module is VLLM_PYTHON_MODULE in config/vllm.sh (override it with
 # an env var if the default stops resolving).
 
 set -euo pipefail
@@ -24,8 +24,8 @@ set -euo pipefail
 HERE="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 WF="$(cd "$HERE/.." && pwd)"
 ROOT="$(cd "$WF/../.." && pwd)"
-# shellcheck source=config/env.sh
-source "$ROOT/config/env.sh"
+# shellcheck source=config/vllm.sh
+source "$ROOT/config/vllm.sh"
 
 SETUP_CMD='sbatch --mem=16G --cpus-per-task=4 --time=03:00:00 --wrap="bash workflows/vllm-batch/scripts/setup.sh"'
 _check_running_in_slurm_job "$SETUP_CMD" || exit 1
@@ -109,7 +109,7 @@ PYTHONNOUSERSITE=1 apptainer exec "$VLLM_SIF" python3 -c "import vllm; print('  
 echo
 
 # --- 1b. torchcodec overlay (works around a CUDA 13 build in the image) -------
-# See VLLM_TORCHCODEC_SPEC in config/env.sh. Installed with the image's own pip
+# See VLLM_TORCHCODEC_SPEC in config/vllm.sh. Installed with the image's own pip
 # so the wheel matches its Python, into fastdata (a few MB, no dependencies).
 if [[ -d "$VLLM_OVERLAY_DIR/torchcodec" ]]; then
   echo "==> torchcodec overlay already present: $VLLM_OVERLAY_DIR"

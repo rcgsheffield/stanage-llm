@@ -1,27 +1,27 @@
 #!/usr/bin/env bash
-# Shared configuration for running an open-weight LLM on Stanage with Ollama.
+# Configuration for running an open-weight LLM on Stanage with Ollama.
 #
-# This file is *sourced* by the other scripts (and by you, if you want the
+# This file is *sourced* by the Ollama scripts (and by you, if you want the
 # variables in your own shell). It is the ONE place you need to edit.
 #
-#   source config/env.sh
+#   source config/ollama.sh
 #
 # The only thing most people change is MODEL (see the table in README.md).
 # Override it without editing the file:
 #
-#   MODEL=qwen2.5:14b source config/env.sh
+#   MODEL=qwen2.5:14b source config/ollama.sh
 
-# --- Where everything lives -------------------------------------------------
-# Fastdata (/mnt/parscratch) has no quota, is fast (Lustre), and is reachable
-# from BOTH the login nodes and the worker/GPU nodes. Your home directory
-# (/users/$USER) is only 50 GB, so model weights and the container image must
-# NOT go there.
-export PARSCRATCH="/mnt/parscratch/users/$USER"
+_OLLAMA_CONF_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+# shellcheck source=common.sh
+source "$_OLLAMA_CONF_DIR/common.sh"
+unset _OLLAMA_CONF_DIR
+
 export OLLAMA_DIR="$PARSCRATCH/ollama"
 
 # Ollama stores downloaded model weights here. Pointing OLLAMA_MODELS at
 # fastdata is what keeps multi-GB models off your 50 GB home quota.
 export OLLAMA_MODELS="$OLLAMA_DIR/models"
+
 
 # The Apptainer image we pull once from Docker Hub.
 export OLLAMA_SIF="$OLLAMA_DIR/ollama.sif"
@@ -33,10 +33,6 @@ export OLLAMA_SIF="$OLLAMA_DIR/ollama.sif"
 # (0.32.3 as of writing). Find current tags/digests at
 # https://hub.docker.com/r/ollama/ollama/tags
 export OLLAMA_IMAGE="docker://ollama/ollama@sha256:ec24bcaa2a810eb74171ce7c517813ef4821ed678988845e8d76cf62467036d4"
-
-# Keep Apptainer's build/pull cache off home too.
-export APPTAINER_CACHEDIR="$PARSCRATCH/apptainer/cache"
-
 # Address the Ollama server binds to and clients connect to. Apptainer
 # shares the host network (no container network isolation), so client and
 # server find each other on localhost — but that's about discovery, not
@@ -98,30 +94,6 @@ _check_ollama_host_loopback() {
   return 1
 }
 
-# Refuse to run outside a SLURM job. Apptainer is only installed on Stanage's
-# worker nodes, not the login nodes, and login nodes are shared and not meant
-# for sustained compute anyway. SLURM_JOB_ID is set by both srun and sbatch
-# and unset on a bare login-node shell, so its absence is a reliable "not in
-# a job" signal. $1 is the command the caller should suggest instead.
-# Override with STANAGE_ALLOW_NO_SLURM=1 for local/off-Stanage testing.
-# Called by 00_setup.sh and start_ollama.sh.
-_check_running_in_slurm_job() {
-  local hint="$1"
-  if [[ -n "${SLURM_JOB_ID:-}" ]]; then
-    return 0
-  fi
-  if [[ "${STANAGE_ALLOW_NO_SLURM:-0}" == "1" ]]; then
-    echo "WARNING: no SLURM_JOB_ID detected, but continuing because" >&2
-    echo "         STANAGE_ALLOW_NO_SLURM=1." >&2
-    return 0
-  fi
-  echo "ERROR: no active SLURM job detected (SLURM_JOB_ID is unset)." >&2
-  echo "       You appear to be on a login node ($(hostname)), where" >&2
-  echo "       Apptainer is not installed. Start a job with (from the repo root):" >&2
-  echo "         $hint" >&2
-  echo "       Set STANAGE_ALLOW_NO_SLURM=1 to override (e.g. local testing)." >&2
-  return 1
-}
 
 # Warn -- never change anything -- if the fastdata directories holding your
 # prompts, completions and server logs are reachable by other users. Fastdata
@@ -207,65 +179,6 @@ _ollama_session_server_pids() {
 # for other users. On by default (60 min) so idle sessions don't hog shared
 # GPUs; set to 0 to disable.
 export OLLAMA_IDLE_TIMEOUT="${OLLAMA_IDLE_TIMEOUT:-15}"
-
-# --- vLLM batch workflow (workflows/vllm-batch/) ---------------------------
-# Only used by the Snakemake + vLLM workflow; the Ollama scripts ignore these.
-# Everything stays on fastdata for the same reasons as OLLAMA_DIR above.
-export VLLM_DIR="$PARSCRATCH/vllm"
-# The image is ~10 GB, almost all of it the CUDA/PyTorch stack vLLM needs.
-# One big file read by every GPU job is what fastdata is for (no quota); it
-# isn't backed up, but setup can always re-pull it. A group can share one copy
-# (e.g. under /usr/local/community, the Stanage area for shared software) by
-# exporting VLLM_SIF=/path/to/vllm.sif before running anything.
-export VLLM_SIF="${VLLM_SIF:-$VLLM_DIR/vllm.sif}"
-
-# Pinned by digest, same convention as OLLAMA_IMAGE. This is the multi-arch
-# index digest of vllm/vllm-openai:v0.32.0-cu129 -- the CUDA 12.9 build, which
-# runs on a wider range of host NVIDIA drivers than the default CUDA 13 tags.
-# Bump it (and delete VLLM_SIF so setup re-pulls) for a newer vLLM. Tags:
-# https://hub.docker.com/r/vllm/vllm-openai/tags
-export VLLM_IMAGE="docker://vllm/vllm-openai@sha256:bc0445dac61accbf1c3b17fbb524a71eee0b1b32f55ba45952095e3be8991c3f"
-
-# Overlay for a bug in the image above: it ships torchcodec 0.17.0 built for
-# CUDA 13 (needs libnvrtc.so.13 / libcudart.so.13), but the image is CUDA 12.9,
-# so `import vllm` fails. vLLM's requirements only say `torchcodec >= 0.14`, so
-# the image build picked up the CUDA 13 wheel. setup.sh installs this CUDA 12.9
-# build of torchcodec (a few MB, --no-deps) into VLLM_OVERLAY_DIR on fastdata,
-# and the Snakefile puts that directory first on PYTHONPATH inside the container.
-# Drop both once a newer image fixes it (check with `import torchcodec`).
-export VLLM_OVERLAY_DIR="$VLLM_DIR/pylibs"
-export VLLM_TORCHCODEC_SPEC="${VLLM_TORCHCODEC_SPEC:-torchcodec==0.16.0+cu129}"
-export VLLM_TORCHCODEC_INDEX="${VLLM_TORCHCODEC_INDEX:-https://download.pytorch.org/whl/cu129}"
-
-# Python virtual environment (venv) holding Snakemake + its SLURM executor
-# plugin (the workflow's controller side; vLLM itself lives in the container).
-# Built from the cluster module below; setup and the controller job both load
-# it. Snakemake needs Python >= 3.11.
-#
-# This must be an architecture-independent Python: Snakemake's SLURM plugin
-# also runs the venv's Python on the *GPU* nodes (AMD EPYC), while the
-# login/CPU nodes are Intel. The `Python/*` modules in the el9 tree are built
-# for the Intel CPUs and die with "Illegal instruction" (SIGILL) on the GPU
-# nodes, so use Anaconda3, which lives in the arch-independent `common` tree.
-# A venv is tied to the interpreter that built it: after changing the module,
-# delete $VLLM_ENV and re-run setup.
-export VLLM_ENV="$VLLM_DIR/env"
-export VLLM_PYTHON_MODULE="${VLLM_PYTHON_MODULE:-Anaconda3/2025.06-1}"
-
-# Load VLLM_PYTHON_MODULE. Batch shells don't always inherit the `module`
-# function, so source the init script first if needed.
-_load_vllm_python_module() {
-  if ! type module >/dev/null 2>&1; then
-    # shellcheck disable=SC1091
-    source /etc/profile.d/modules.sh 2>/dev/null ||
-      source /etc/profile.d/lmod.sh 2>/dev/null || true
-  fi
-  module load "$VLLM_PYTHON_MODULE"
-}
-
-# Hugging Face weights cache. vLLM loads safetensors from the HF Hub, not
-# Ollama's GGUF blobs, so models are downloaded separately into here.
-export HF_HOME="$PARSCRATCH/huggingface"
 
 # --- Which model to run -----------------------------------------------------
 # See the "Choosing a model" table in README.md. gemma3:270m is a tiny,

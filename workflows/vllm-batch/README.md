@@ -60,7 +60,7 @@ flowchart LR
 - **infer** is the only rule submitted to SLURM: one GPU job per shard
   ([`scripts/infer.py`](scripts/infer.py)).
 - **Every rule runs inside one pinned container**, the vLLM image set by
-  `VLLM_IMAGE` in [`config/env.sh`](../../config/env.sh), so the whole run uses
+  `VLLM_IMAGE` in [`config/vllm.sh`](../../config/vllm.sh), so the whole run uses
   a fixed software stack.
 - Changing the model, sampling or vLLM settings re-runs the affected shards.
   Unchanged, finished shards are never redone.
@@ -78,10 +78,10 @@ sbatch --mem=16G --cpus-per-task=4 --time=03:00:00 \
 
 This pulls the vLLM image to `/mnt/parscratch/users/$USER/vllm/vllm.sif`. It
 also creates a Python virtual environment with Snakemake and its SLURM
-plugin, using the cluster's `Anaconda3` module and `venv` (the `Python` modules crash on the AMD GPU nodes, see `config/env.sh`), as the
+plugin, using the cluster's `Anaconda3` module and `venv` (the `Python` modules crash on the AMD GPU nodes, see `config/vllm.sh`), as the
 [Stanage Python docs](https://docs.hpc.shef.ac.uk/en/latest/stanage/software/apps/python.html)
 recommend. The module is `VLLM_PYTHON_MODULE` in
-[`config/env.sh`](../../config/env.sh). A venv is tied to the Python that built
+[`config/vllm.sh`](../../config/vllm.sh). A venv is tied to the Python that built
 it, so if you change that module, delete `/mnt/parscratch/users/$USER/vllm/env`
 and re-run setup.
 
@@ -206,7 +206,7 @@ results.
 The pinned image ships a `torchcodec` built for CUDA 13, which cannot load in a
 CUDA 12.9 image, so `import vllm` fails (`libnvrtc.so.13: cannot open shared
 object file`). Setup therefore installs a CUDA 12.9 `torchcodec`
-(`VLLM_TORCHCODEC_SPEC` in [`config/env.sh`](../../config/env.sh); a few MB)
+(`VLLM_TORCHCODEC_SPEC` in [`config/vllm.sh`](../../config/vllm.sh); a few MB)
 into `/mnt/parscratch/users/$USER/vllm/pylibs`, and every rule puts that
 directory first on `PYTHONPATH`. Remove the overlay when a newer image no longer
 needs it (check `import torchcodec` inside the image).
@@ -233,7 +233,7 @@ vllm/
 huggingface/                 # model weights (HF_HOME), shared across runs
 ```
 
-Variables set in [`config/env.sh`](../../config/env.sh) (override by exporting
+Variables set in [`config/vllm.sh`](../../config/vllm.sh) (override by exporting
 before submitting): `VLLM_DIR`, `VLLM_SIF`, `VLLM_IMAGE`, `VLLM_ENV`,
 `VLLM_PYTHON_MODULE`, `VLLM_OVERLAY_DIR`, `VLLM_TORCHCODEC_SPEC`,
 `VLLM_TORCHCODEC_INDEX`, `HF_HOME`, and for setup only `VLLM_PULL_TMPDIR`,
@@ -257,7 +257,7 @@ before submitting): `VLLM_DIR`, `VLLM_SIF`, `VLLM_IMAGE`, `VLLM_ENV`,
 
 ## Upgrading vLLM
 
-Change `VLLM_IMAGE` in [`config/env.sh`](../../config/env.sh) to a newer
+Change `VLLM_IMAGE` in [`config/vllm.sh`](../../config/vllm.sh) to a newer
 digest from [Docker Hub](https://hub.docker.com/r/vllm/vllm-openai/tags), delete
 `/mnt/parscratch/users/$USER/vllm/vllm.sif`, and re-run setup. The default is
 a `-cu129` (CUDA 12.9) build, chosen because it runs on a wider range of host

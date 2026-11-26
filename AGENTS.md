@@ -16,7 +16,9 @@ Always search this website for authoritative instructions on using the task sche
 ## Repository Layout
 
 ```
-config/env.sh              # single source of truth: paths, model, host — sourced by every script
+config/common.sh           # shared: fastdata paths, Apptainer cache, SLURM-job check
+config/ollama.sh           # Ollama config: paths, model, host — sourced by the Ollama scripts
+config/vllm.sh             # vLLM workflow config: image, venv, HF cache — sourced by workflows/vllm-batch
 scripts/00_setup.sh        # one-time, CPU job (srun from login node): pulls image + model weights
 scripts/start_ollama.sh    # sourced (not run) on a GPU node: starts server, defines `chat`/`stop_ollama`
 scripts/stop_ollama.sh     # stops the server
@@ -51,7 +53,7 @@ change:
    `snakemake --lint` and a profile dry run (`-n`). Locally, export stand-in
    `VLLM_DIR`/`VLLM_SIF`/`HF_HOME` values first; the dry run also needs an
    `apptainer` on PATH (a stub is fine, see `.github/workflows/snakemake.yml`).
-2. Confirm scripts still source `config/env.sh` correctly and don't hardcode
+2. Confirm scripts still source `config/ollama.sh` correctly and don't hardcode
    paths that should come from it.
 3. If touching SLURM directives in `examples/batch_inference.sbatch`, sanity
    check against [Stanage SLURM docs](https://docs.hpc.shef.ac.uk/en/latest/hpc/scheduler/index.html)
@@ -61,7 +63,7 @@ change:
 
 - `start_ollama.sh` must be **sourced**, not executed — it exports env vars
   and shell functions (`chat`, `stop_ollama`) into the calling shell.
-- Model choice flows through `MODEL`, set in `config/env.sh` or overridden via
+- Model choice flows through `MODEL`, set in `config/ollama.sh` or overridden via
   env var — don't hardcode a model name in a script.
 
 ## Releases
