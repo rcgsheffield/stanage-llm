@@ -4,16 +4,16 @@
 # This file is *sourced* by the Ollama scripts (and by you, if you want the
 # variables in your own shell). It is the ONE place you need to edit.
 #
-#   source config/ollama.sh
+#   source ollama/config.sh
 #
 # The only thing most people change is MODEL (see the table in README.md).
 # Override it without editing the file:
 #
-#   MODEL=qwen2.5:14b source config/ollama.sh
+#   MODEL=qwen2.5:14b source ollama/config.sh
 
 _OLLAMA_CONF_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-# shellcheck source=common.sh
-source "$_OLLAMA_CONF_DIR/common.sh"
+# shellcheck source=../common/common.sh
+source "$_OLLAMA_CONF_DIR/../common/common.sh"
 unset _OLLAMA_CONF_DIR
 
 export OLLAMA_DIR="$PARSCRATCH/ollama"
@@ -31,7 +31,7 @@ export OLLAMA_SIF="$OLLAMA_DIR/ollama.sif"
 # isn't silently swapped out by an upstream retag. Bump this -- and delete
 # OLLAMA_SIF so 00_setup.sh re-pulls -- when you want a newer Ollama version
 # (0.32.3 as of writing). Find current tags/digests at
-# https://hub.docker.com/r/ollama/ollama/tags
+# https://hub.docker.com/r/ollama/tags
 export OLLAMA_IMAGE="docker://ollama/ollama@sha256:ec24bcaa2a810eb74171ce7c517813ef4821ed678988845e8d76cf62467036d4"
 # Address the Ollama server binds to and clients connect to. Apptainer
 # shares the host network (no container network isolation), so client and
@@ -128,7 +128,7 @@ _check_fastdata_perms() {
     echo "         private with:" >&2
     echo "           chmod 700 '$OLLAMA_DIR' && chmod -R go-rwx '$OLLAMA_DIR'" >&2
     echo "         or re-run setup with STANAGE_FIX_PERMS=1, e.g. from a login node:" >&2
-    echo "           STANAGE_FIX_PERMS=1 srun --mem=8G --cpus-per-task=2 --time=02:00:00 bash scripts/00_setup.sh" >&2
+    echo "           STANAGE_FIX_PERMS=1 srun --mem=8G --cpus-per-task=2 --time=02:00:00 bash ollama/scripts/00_setup.sh" >&2
     echo "         That stops FUTURE reads only -- it cannot un-share" >&2
     echo "         anything another user has already copied." >&2
     bad=1

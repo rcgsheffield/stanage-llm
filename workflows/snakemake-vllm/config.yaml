@@ -1,13 +1,13 @@
 # Configuration for the Snakemake + vLLM batch workflow.
 #
 # Override any key on the command line without editing this file, e.g.
-#   sbatch workflows/vllm-batch/run_workflow.sbatch \
+#   sbatch workflows/snakemake-vllm/run_workflow.sbatch \
 #       --config input=my_prompts.jsonl run_name=exp1 model=Qwen/Qwen2.5-7B-Instruct
 
 # JSONL of prompts, one record per line: {"id": "...", "prompt": "..."}
 # (or "messages": [...] for a full chat). Relative paths are resolved from
 # the repo root.
-input: examples/prompts.jsonl
+input: common/data/prompts.jsonl
 
 # Results go to $PARSCRATCH/vllm/runs/<run_name>/. Use a new run_name per
 # experiment so earlier results are kept.

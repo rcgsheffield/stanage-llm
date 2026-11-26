@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
-# Settings shared by the Ollama and vLLM setups. Sourced by config/ollama.sh
-# and config/vllm.sh -- you normally never source this directly.
+# Settings shared by the Ollama and vLLM setups. Sourced by ollama/config.sh
+# and workflows/snakemake-vllm/config.sh -- you normally never source this directly.
 
 # --- Where everything lives -------------------------------------------------
 # Fastdata (/mnt/parscratch) has no quota, is fast (Lustre), and is reachable

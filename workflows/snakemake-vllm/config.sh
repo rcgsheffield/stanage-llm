@@ -1,13 +1,13 @@
 #!/usr/bin/env bash
-# Configuration for the vLLM batch workflow (workflows/vllm-batch/).
+# Configuration for the vLLM batch workflow (workflows/snakemake-vllm/).
 # Sourced by run_workflow.sbatch and scripts/setup.sh. The Ollama scripts do
 # not use it. Everything stays on fastdata (see common.sh).
 #
-#   source config/vllm.sh
+#   source workflows/snakemake-vllm/config.sh
 
 _VLLM_CONF_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-# shellcheck source=common.sh
-source "$_VLLM_CONF_DIR/common.sh"
+# shellcheck source=../../common/common.sh
+source "$_VLLM_CONF_DIR/../../common/common.sh"
 unset _VLLM_CONF_DIR
 
 export VLLM_DIR="$PARSCRATCH/vllm"

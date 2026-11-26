@@ -8,19 +8,19 @@ on:
     branches: [ main ]
     paths:
       - 'workflows/**'
-      - 'config/**'
+      - 'common/**'
       - '.github/workflows/snakemake.yml'
   pull_request:
     paths:
       - 'workflows/**'
-      - 'config/**'
+      - 'common/**'
       - '.github/workflows/snakemake.yml'
 
 jobs:
   lint:
     runs-on: ubuntu-24.04
     env:
-      # Stand-ins for the fastdata paths config/vllm.sh sets on Stanage; the
+      # Stand-ins for the fastdata paths workflows/snakemake-vllm/config.sh sets on Stanage; the
       # dry run only builds the job graph, it never touches these.
       PARSCRATCH: /tmp/parscratch
       VLLM_DIR: /tmp/parscratch/vllm
@@ -35,7 +35,7 @@ jobs:
         with:
           python-version: '3.12'
       - name: Install Snakemake
-        run: pip install -r workflows/vllm-batch/requirements.txt snakefmt==2.1.0
+        run: pip install -r workflows/snakemake-vllm/requirements.txt snakefmt==2.1.0
       - name: Stub apptainer
         # The profile enables Snakemake's Apptainer integration, which checks
         # for the binary even on a dry run. Nothing is executed in CI.
@@ -45,11 +45,11 @@ jobs:
           chmod +x "$RUNNER_TEMP/bin/apptainer"
           echo "$RUNNER_TEMP/bin" >> "$GITHUB_PATH"
       - name: snakefmt
-        run: snakefmt --check workflows/vllm-batch/Snakefile
+        run: snakefmt --check workflows/snakemake-vllm/Snakefile
       - name: snakemake --lint
-        run: snakemake --snakefile workflows/vllm-batch/Snakefile --lint
+        run: snakemake --snakefile workflows/snakemake-vllm/Snakefile --lint
       - name: Dry run (job graph with the SLURM profile)
         run: >
-          snakemake --snakefile workflows/vllm-batch/Snakefile
-          --workflow-profile workflows/vllm-batch/profiles/stanage
+          snakemake --snakefile workflows/snakemake-vllm/Snakefile
+          --workflow-profile workflows/snakemake-vllm/profiles/stanage
           --dry-run --config shard_size=2

@@ -3,13 +3,13 @@
 # Non-interactive batch inference over a dataset of prompts.
 #
 # This is the "scale past interactive" path: submit it and walk away. It grabs
-# a GPU, starts the model, runs every prompt in examples/prompts.jsonl through
+# a GPU, starts the model, runs every prompt in common/data/prompts.jsonl through
 # it, writes the answers to fastdata, and shuts the server down.
 #
-# Submit from the repo root ON A LOGIN NODE (after running scripts/00_setup.sh):
+# Submit from the repo root ON A LOGIN NODE (after running ollama/scripts/00_setup.sh):
 #
-#     sbatch examples/batch_inference.sbatch                  # bundled sample prompts
-#     sbatch examples/batch_inference.sbatch my_prompts.jsonl # your own data
+#     sbatch ollama/examples/batch_inference.sbatch                  # bundled sample prompts
+#     sbatch ollama/examples/batch_inference.sbatch my_prompts.jsonl # your own data
 #
 # Watch it with:   squeue --me
 # Cancel it with:  scancel <job-id>
@@ -27,7 +27,7 @@
 ##SBATCH --mail-type=END,FAIL
 # Written next to server.log/results.*.jsonl (this job's other output) rather
 # than the submission directory, so a run's files stay together. SLURM writes
-# this file itself, before config/ollama.sh is sourced below, so it can't
+# this file itself, before ollama/config.sh is sourced below, so it can't
 # reference $PARSCRATCH -- SLURM's own %u/%j substitution is used instead.
 #SBATCH --output=/mnt/parscratch/users/%u/ollama/llm-batch.%j.out
 
@@ -41,23 +41,23 @@ set -euo pipefail
 # NOTE: this does NOT cover the --output file declared above. slurmstepd opens
 # llm-batch.%j.out before this line runs, using the umask recorded when you
 # ran sbatch. That file is kept private only by $OLLAMA_DIR being mode 700
-# (see scripts/00_setup.sh); submit with `umask 077 && sbatch ...` if you want
+# (see ollama/scripts/00_setup.sh); submit with `umask 077 && sbatch ...` if you want
 # its own mode tightened as well.
 umask 077
 
 # SLURM starts the job in the directory you submitted from (the repo root).
-source config/ollama.sh
+source ollama/config.sh
 
 echo "Job $SLURM_JOB_ID running $MODEL on $(hostname)"
 apptainer exec --nv "$OLLAMA_SIF" nvidia-smi -L || true
 
 # Start the server (this defines the `stop_ollama` helper too).
-source scripts/start_ollama.sh
+source ollama/scripts/start_ollama.sh
 
 # Run inference. Results go to fastdata, keyed by job id so runs don't clobber.
 OUT="$OLLAMA_DIR/results.$SLURM_JOB_ID.jsonl"
-INPUT="${1:-examples/prompts.jsonl}"
-python3 examples/batch_infer.py "$INPUT" "$OUT"
+INPUT="${1:-common/data/prompts.jsonl}"
+python3 ollama/examples/batch_infer.py "$INPUT" "$OUT"
 
 # Always stop the server so the node is left clean.
 stop_ollama

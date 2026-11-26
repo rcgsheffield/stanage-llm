@@ -6,12 +6,12 @@ client, pointed at the local server, with any dummy API key. This script uses
 that if `openai` is installed, and otherwise falls back to a plain HTTP request
 via the standard library -- so it works with zero extra installs.
 
-Usage (inside the GPU session, after `source scripts/start_ollama.sh`):
+Usage (inside the GPU session, after `source ollama/scripts/start_ollama.sh`):
 
-    python3 examples/query_api.py "Explain diffusion models in two sentences."
+    python3 ollama/examples/query_api.py "Explain diffusion models in two sentences."
 
 The model and server address are read from the environment (set by
-config/ollama.sh): MODEL and OLLAMA_HOST.
+ollama/config.sh): MODEL and OLLAMA_HOST.
 """
 import json
 import os
