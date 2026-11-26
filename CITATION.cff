@@ -1,8 +1,8 @@
 cff-version: 1.2.0
 message: "If you use this software, please cite it as below."
 type: software
-title: "Stanage LLM Ollama Example"
-abstract: "This is an example of how to use the Stanage LLM with Ollama. It demonstrates the basic functionality and provides a starting point for further development."
+title: "Stanage LLM examples"
+abstract: "Worked examples of running open-weight large language models on the University of Sheffield Stanage HPC cluster, using Ollama and Snakemake with vLLM inside Apptainer containers on SLURM GPU nodes."
 authors:
   - given-names: "Joe Salvador Thornhill"
     family-names: Heffer

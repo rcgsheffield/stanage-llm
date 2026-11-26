@@ -3,7 +3,7 @@
 # ONE-TIME SETUP -- run this ONCE, as a small CPU job launched from a Stanage
 # login node (run from the repo root):
 #
-#   sbatch --mem=8G --cpus-per-task=2 --time=02:00:00 --wrap="bash scripts/00_setup.sh"
+#   sbatch --mem=8G --cpus-per-task=2 --time=02:00:00 --wrap="bash ollama/scripts/00_setup.sh"
 #
 # (or `srun ...` instead of `sbatch ... --wrap=...` to watch it in the
 # foreground; sbatch survives an SSH disconnect, so it is preferred.)
@@ -25,13 +25,13 @@ set -euo pipefail
 
 # Resolve the repo root from this script's location, then load config.
 HERE="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-ROOT="$(cd "$HERE/.." && pwd)"
-# shellcheck source=../config/ollama.sh
-source "$ROOT/config/ollama.sh"
+ROOT="$(cd "$HERE/../.." && pwd)"
+# shellcheck source=../config.sh
+source "$ROOT/ollama/config.sh"
 
 _check_ollama_host_loopback || exit 1
 
-SETUP_SRUN="sbatch --mem=8G --cpus-per-task=2 --time=02:00:00 --wrap=\"bash scripts/00_setup.sh\""
+SETUP_SRUN="sbatch --mem=8G --cpus-per-task=2 --time=02:00:00 --wrap=\"bash ollama/scripts/00_setup.sh\""
 
 # --- Sanity checks ----------------------------------------------------------
 # Before printing anything else, so a login-node run fails with one clear
@@ -167,7 +167,7 @@ echo
 echo "==> Disk used by models: $(du -sh "$OLLAMA_MODELS" 2>/dev/null | cut -f1)"
 echo
 echo "Setup complete. This job will now exit. Next, from the login node:"
-echo "  1. Run your prompts as a batch job (preferred):  sbatch examples/batch_inference.sbatch [prompts.jsonl]"
+echo "  1. Run your prompts as a batch job (preferred):  sbatch ollama/examples/batch_inference.sbatch [prompts.jsonl]"
 echo "     or, for a SHORT smoke test only (interactive GPU use is discouraged):"
 echo "     srun --partition=gpu --qos=gpu --gres=gpu:a100:1 --mem=82G --cpus-per-task=8 --time=01:00:00 --pty bash"
-echo "  2. Then run:  source scripts/start_ollama.sh"
+echo "  2. Then run:  source ollama/scripts/start_ollama.sh"

@@ -2,7 +2,7 @@
 #
 #   input.jsonl --split--> shards/NNNNN.jsonl --infer (GPU job each)--> out/NNNNN.jsonl --merge--> results.jsonl
 #
-# Run it via run_workflow.sbatch (see README.md), which sources config/vllm.sh
+# Run it via run_workflow.sbatch (see README.md), which sources workflows/snakemake-vllm/config.sh
 # and points Snakemake at the Stanage SLURM profile. Only `infer` is submitted
 # as a SLURM job; the other rules are cheap and run inside the controller job.
 
@@ -26,7 +26,7 @@ def require_env(name):
     if not value:
         raise WorkflowError(
             f"${name} is not set. Run this workflow via run_workflow.sbatch, "
-            "or `source config/vllm.sh` first."
+            "or `source workflows/snakemake-vllm/config.sh` first."
         )
     return value
 

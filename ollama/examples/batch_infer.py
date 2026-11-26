@@ -5,10 +5,10 @@ Reads records like {"id": "1", "prompt": "..."} and writes
 {"id": "1", "prompt": "...", "response": "..."} for each.
 
 Usage:
-    python3 examples/batch_infer.py INPUT.jsonl OUTPUT.jsonl
+    python3 ollama/examples/batch_infer.py INPUT.jsonl OUTPUT.jsonl
 
 Model and server address come from the environment (MODEL, OLLAMA_HOST),
-set by config/ollama.sh. Uses the `openai` client if available, otherwise the
+set by ollama/config.sh. Uses the `openai` client if available, otherwise the
 standard library -- see query_api.py for details.
 """
 import json

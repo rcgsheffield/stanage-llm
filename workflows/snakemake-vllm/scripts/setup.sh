@@ -4,7 +4,7 @@
 # CPU job, from the repo root on a Stanage login node:
 #
 #   sbatch --mem=16G --cpus-per-task=4 --time=03:00:00 \
-#          --wrap="bash workflows/vllm-batch/scripts/setup.sh"
+#          --wrap="bash workflows/snakemake-vllm/scripts/setup.sh"
 #
 # It does two things, both into fastdata ($PARSCRATCH/vllm):
 #   1. Pulls the pinned vLLM container image (~10 GB; this is the slow part).
@@ -16,7 +16,7 @@
 # fetches whichever model config.yaml names, so changing models needs no
 # re-setup. Safe to re-run; finished steps are skipped.
 #
-# The Python module is VLLM_PYTHON_MODULE in config/vllm.sh (override it with
+# The Python module is VLLM_PYTHON_MODULE in workflows/snakemake-vllm/config.sh (override it with
 # an env var if the default stops resolving).
 
 set -euo pipefail
@@ -24,10 +24,10 @@ set -euo pipefail
 HERE="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 WF="$(cd "$HERE/.." && pwd)"
 ROOT="$(cd "$WF/../.." && pwd)"
-# shellcheck source=config/vllm.sh
-source "$ROOT/config/vllm.sh"
+# shellcheck source=../config.sh
+source "$ROOT/workflows/snakemake-vllm/config.sh"
 
-SETUP_CMD='sbatch --mem=16G --cpus-per-task=4 --time=03:00:00 --wrap="bash workflows/vllm-batch/scripts/setup.sh"'
+SETUP_CMD='sbatch --mem=16G --cpus-per-task=4 --time=03:00:00 --wrap="bash workflows/snakemake-vllm/scripts/setup.sh"'
 _check_running_in_slurm_job "$SETUP_CMD" || exit 1
 
 if ! command -v apptainer >/dev/null 2>&1; then
@@ -44,7 +44,7 @@ fi
 # Prompts, completions and logs will live under $VLLM_DIR, on a cluster-wide
 # filesystem: create every level we own as mode 700 (one level at a time,
 # because `mkdir -p -m` only applies the mode to the last component). Existing
-# directories are left alone, as in scripts/00_setup.sh.
+# directories are left alone, as in ollama/scripts/00_setup.sh.
 umask 077
 for _dir in "$PARSCRATCH" "$VLLM_DIR" "$VLLM_DIR/cache" "$VLLM_DIR/runs" \
             "$VLLM_DIR/tmp" "$VLLM_OVERLAY_DIR" "$HF_HOME" \
@@ -109,7 +109,7 @@ PYTHONNOUSERSITE=1 apptainer exec "$VLLM_SIF" python3 -c "import vllm; print('  
 echo
 
 # --- 1b. torchcodec overlay (works around a CUDA 13 build in the image) -------
-# See VLLM_TORCHCODEC_SPEC in config/vllm.sh. Installed with the image's own pip
+# See VLLM_TORCHCODEC_SPEC in workflows/snakemake-vllm/config.sh. Installed with the image's own pip
 # so the wheel matches its Python, into fastdata (a few MB, no dependencies).
 if [[ -d "$VLLM_OVERLAY_DIR/torchcodec" ]]; then
   echo "==> torchcodec overlay already present: $VLLM_OVERLAY_DIR"
@@ -139,6 +139,6 @@ echo "==> Snakemake $("$VLLM_ENV/bin/snakemake" --version) ready in $VLLM_ENV"
 
 echo
 echo "Setup complete. Next, from the repo root on a login node:"
-echo "  sbatch workflows/vllm-batch/run_workflow.sbatch"
+echo "  sbatch workflows/snakemake-vllm/run_workflow.sbatch"
 echo "or with your own data/model:"
-echo "  sbatch workflows/vllm-batch/run_workflow.sbatch --config input=my_prompts.jsonl run_name=exp1"
+echo "  sbatch workflows/snakemake-vllm/run_workflow.sbatch --config input=my_prompts.jsonl run_name=exp1"

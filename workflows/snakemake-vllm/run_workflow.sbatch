@@ -5,11 +5,11 @@
 # splits your prompts into shards and submits one GPU job per shard, then
 # merges the results. It holds no GPU itself.
 #
-# Submit from the repo root ON A LOGIN NODE (after workflows/vllm-batch/scripts/setup.sh):
+# Submit from the repo root ON A LOGIN NODE (after workflows/snakemake-vllm/scripts/setup.sh):
 #
-#   sbatch workflows/vllm-batch/run_workflow.sbatch
-#   sbatch workflows/vllm-batch/run_workflow.sbatch --config input=my_prompts.jsonl run_name=exp1
-#   sbatch workflows/vllm-batch/run_workflow.sbatch -n          # dry run: show the plan only
+#   sbatch workflows/snakemake-vllm/run_workflow.sbatch
+#   sbatch workflows/snakemake-vllm/run_workflow.sbatch --config input=my_prompts.jsonl run_name=exp1
+#   sbatch workflows/snakemake-vllm/run_workflow.sbatch -n          # dry run: show the plan only
 #
 # Any arguments are passed straight to `snakemake`.
 #
@@ -31,16 +31,16 @@ set -euo pipefail
 # Prompts and completions are written under $VLLM_DIR; keep them private.
 umask 077
 
-if [[ ! -f config/vllm.sh ]]; then
-  echo "ERROR: submit this from the repo root (config/vllm.sh not found in $PWD)." >&2
+if [[ ! -f workflows/snakemake-vllm/config.sh ]]; then
+  echo "ERROR: submit this from the repo root (workflows/snakemake-vllm/config.sh not found in $PWD)." >&2
   exit 1
 fi
-# shellcheck source=config/vllm.sh
-source config/vllm.sh
+# shellcheck source=config.sh
+source workflows/snakemake-vllm/config.sh
 
 if [[ ! -x "$VLLM_ENV/bin/snakemake" || ! -f "$VLLM_SIF" ]]; then
   echo "ERROR: one-time setup not done. From a login node, in the repo root, run:" >&2
-  echo '  sbatch --mem=16G --cpus-per-task=4 --time=03:00:00 --wrap="bash workflows/vllm-batch/scripts/setup.sh"' >&2
+  echo '  sbatch --mem=16G --cpus-per-task=4 --time=03:00:00 --wrap="bash workflows/snakemake-vllm/scripts/setup.sh"' >&2
   exit 1
 fi
 # Load the Python module the venv was built from, then use the venv
@@ -52,7 +52,7 @@ echo "Controller job $SLURM_JOB_ID on $(hostname); Snakemake $(snakemake --versi
 # The SLURM plugin prints a warning (and pauses 5 s) because it is itself
 # running inside a job. That is expected here.
 snakemake \
-  --snakefile workflows/vllm-batch/Snakefile \
-  --workflow-profile workflows/vllm-batch/profiles/stanage \
+  --snakefile workflows/snakemake-vllm/Snakefile \
+  --workflow-profile workflows/snakemake-vllm/profiles/stanage \
   --slurm-logdir "$VLLM_DIR/slurm-logs" \
   "$@"

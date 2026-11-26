@@ -2,11 +2,12 @@
 
 ## Purpose
 
-A minimal, copy-paste example for running open-weight LLMs (Llama, Qwen,
-Mistral, gpt-oss, …) on the University of Sheffield's Stanage HPC cluster,
-using Ollama inside an Apptainer container. Handles the HPC mechanics (SLURM,
-GPUs, containers, fastdata placement) so users go from "I have a Stanage
-account" to "I'm chatting with a model on an A100" in a few commands.
+A set of minimal, copy-paste examples for running open-weight LLMs (Llama,
+Qwen, Mistral, gpt-oss, …) on the University of Sheffield's Stanage HPC
+cluster. Each example handles the HPC mechanics (SLURM, GPUs, containers,
+fastdata placement) for one way of working: `ollama/` (interactive server and
+simple batch job) and `workflows/` (workflow engines: Snakemake + vLLM now,
+Nextflow / CWL later). The top-level README holds only general information.
 
 ## HPC usage
 
@@ -16,23 +17,25 @@ Always search this website for authoritative instructions on using the task sche
 ## Repository Layout
 
 ```
-config/common.sh           # shared: fastdata paths, Apptainer cache, SLURM-job check
-config/ollama.sh           # Ollama config: paths, model, host — sourced by the Ollama scripts
-config/vllm.sh             # vLLM workflow config: image, venv, HF cache — sourced by workflows/vllm-batch
-scripts/00_setup.sh        # one-time, CPU job (srun from login node): pulls image + model weights
-scripts/start_ollama.sh    # sourced (not run) on a GPU node: starts server, defines `chat`/`stop_ollama`
-scripts/stop_ollama.sh     # stops the server
-examples/                  # optional extras: Python API client, batch SLURM job, sample prompts
-workflows/vllm-batch/      # batch-at-scale alternative: Snakemake (SLURM plugin) + vLLM offline engine,
-                           # one GPU job per shard; every rule runs in the pinned vLLM SIF (VLLM_IMAGE)
+README.md                  general HPC-LLM info only (no example-specific material)
+common/common.sh           shared: fastdata paths, Apptainer cache, SLURM-job check
+common/data/prompts.jsonl  shared sample prompts
+ollama/                    Ollama example: README.md, config.sh (sourced by the scripts),
+                           scripts/{00_setup,start_ollama,stop_ollama}.sh, examples/ (API client, batch job)
+workflows/README.md        conventions for workflow-engine examples
+workflows/snakemake-vllm/  Snakemake (SLURM plugin) + vLLM offline engine, one GPU job per shard;
+                           config.sh, run_workflow.sbatch, every rule runs in the pinned VLLM_IMAGE SIF
 ```
+
+Each example owns its config, scripts and README and depends only on `common/`.
+Scripts and `sbatch` files are submitted from the repo root.
 
 ## Key Tooling
 
 - No package manager for the Ollama path — plain bash + Python 3 standard
   library (Python scripts optionally use the `openai` client if installed, but
   fall back gracefully). The vLLM workflow's controller env (Snakemake + SLURM
-  plugin) is pinned in `workflows/vllm-batch/requirements.txt`; vLLM itself
+  plugin) is pinned in `workflows/snakemake-vllm/requirements.txt`; vLLM itself
   comes only from the container.
 - Apptainer is preinstalled on Stanage **worker nodes only** (not login
   nodes), so every script that calls it must run inside a SLURM job; there is
@@ -46,16 +49,16 @@ workflows/vllm-batch/      # batch-at-scale alternative: Snakemake (SLURM plugin
 There is no test suite — this is a shell/SLURM example repo. To verify a
 change:
 
-1. Shellcheck any modified script: `shellcheck scripts/*.sh`. Lint Python
-   with `ruff check examples` and workflows with `actionlint`. CI also runs
+1. Shellcheck any modified script: `shellcheck $(git ls-files '*.sh')`. Lint Python
+   with `ruff check .` and workflows with `actionlint`. CI also runs
    these, plus a `CITATION.cff` validation and a lychee Markdown link check.
-   For `workflows/vllm-batch/`, CI also runs `snakefmt --check`,
+   For `workflows/snakemake-vllm/`, CI also runs `snakefmt --check`,
    `snakemake --lint` and a profile dry run (`-n`). Locally, export stand-in
    `VLLM_DIR`/`VLLM_SIF`/`HF_HOME` values first; the dry run also needs an
    `apptainer` on PATH (a stub is fine, see `.github/workflows/snakemake.yml`).
-2. Confirm scripts still source `config/ollama.sh` correctly and don't hardcode
+2. Confirm scripts still source `ollama/config.sh` correctly and don't hardcode
    paths that should come from it.
-3. If touching SLURM directives in `examples/batch_inference.sbatch`, sanity
+3. If touching SLURM directives in `ollama/examples/batch_inference.sbatch`, sanity
    check against [Stanage SLURM docs](https://docs.hpc.shef.ac.uk/en/latest/hpc/scheduler/index.html)
    — this can't be run outside Stanage.
 
@@ -63,7 +66,7 @@ change:
 
 - `start_ollama.sh` must be **sourced**, not executed — it exports env vars
   and shell functions (`chat`, `stop_ollama`) into the calling shell.
-- Model choice flows through `MODEL`, set in `config/ollama.sh` or overridden via
+- Model choice flows through `MODEL`, set in `ollama/config.sh` or overridden via
   env var — don't hardcode a model name in a script.
 
 ## Releases
