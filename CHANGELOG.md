@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.2.0](https://github.com/rcgsheffield/stanage-llm/compare/v0.1.3...v0.2.0) (2026-11-26)
+
+
+### Features
+
+* add Snakemake + vLLM batch-inference workflow ([#58](https://github.com/rcgsheffield/stanage-llm/issues/58)) ([433912f](https://github.com/rcgsheffield/stanage-llm/commit/433912f8db476d9a4aa945083d78b4a2cd3b7b20))
+
 ## [0.1.3](https://github.com/rcgsheffield/stanage-llm/compare/v0.1.2...v0.1.3) (2026-11-04)
 
 
