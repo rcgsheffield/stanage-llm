@@ -26,6 +26,7 @@ jobs:
       VLLM_DIR: /tmp/parscratch/vllm
       VLLM_SIF: /tmp/parscratch/vllm/vllm.sif
       HF_HOME: /tmp/parscratch/huggingface
+      VLLM_OVERLAY_DIR: /tmp/parscratch/vllm/pylibs
     steps:
       - name: Checkout
         uses: actions/checkout@v7.0.1
