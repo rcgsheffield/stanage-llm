@@ -579,7 +579,7 @@ uses two of them.
 
 Neither area is encrypted at rest or backed up, and everything this repo writes
 to fastdata is plaintext — including the server log (`server.*.log`) and, for
-batch jobs, every prompt and completion (`results.*.jsonl`) — another reason not
+batch jobs, every prompt and completion (`results.*.jsonl`, or `vllm/runs/<run_name>/` for the [vLLM workflow](workflows/vllm-batch/README.md#where-things-live)) — another reason not
 to run sensitive or confidential data through this setup. See
 [Security](#security) above, and [Who else can see my models and
 prompts?](#who-else-can-see-my-models-and-prompts) for who can read these files.

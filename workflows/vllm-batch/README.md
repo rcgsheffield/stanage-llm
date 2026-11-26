@@ -211,6 +211,50 @@ into `/mnt/parscratch/users/$USER/vllm/pylibs`, and every rule puts that
 directory first on `PYTHONPATH`. Remove the overlay when a newer image no longer
 needs it (check `import torchcodec` inside the image).
 
+## Where things live
+
+Everything is under `/mnt/parscratch/users/$USER` (fastdata, mode `700`):
+
+```
+vllm/
+├── vllm.sif                 # pinned container image (VLLM_SIF)
+├── env/                     # controller venv: Snakemake + SLURM plugin (VLLM_ENV)
+├── pylibs/                  # torchcodec overlay (VLLM_OVERLAY_DIR)
+├── cache/                   # pip, Triton and vLLM compile caches
+├── slurm-logs/              # SLURM plugin job logs
+├── llm-workflow.<jobid>.out # controller output: start here when a run stalls
+└── runs/<run_name>/
+    ├── model.json           # model + exact commit SHA
+    ├── shards/NNNNN.jsonl   # split input
+    ├── out/NNNNN.jsonl      # per-shard results
+    ├── logs/                # per-step logs
+    ├── results.jsonl        # merged output, in input order
+    └── run_metadata.json    # provenance
+huggingface/                 # model weights (HF_HOME), shared across runs
+```
+
+Variables set in [`config/env.sh`](../../config/env.sh) (override by exporting
+before submitting): `VLLM_DIR`, `VLLM_SIF`, `VLLM_IMAGE`, `VLLM_ENV`,
+`VLLM_PYTHON_MODULE`, `VLLM_OVERLAY_DIR`, `VLLM_TORCHCODEC_SPEC`,
+`VLLM_TORCHCODEC_INDEX`, `HF_HOME`, and for setup only `VLLM_PULL_TMPDIR`,
+`VLLM_MKSQUASHFS_MEM` (default `4G`) and `VLLM_MKSQUASHFS_PROCS` (default `2`).
+
+## Troubleshooting
+
+| Symptom | Fix |
+| --- | --- |
+| `one-time setup not done` | Run the setup job (Quick start, step 1) and wait for it to finish. |
+| `'apptainer' not found` / `no active SLURM job` running `setup.sh` | You ran it on a login node. Submit it with `sbatch --wrap` as shown above. |
+| Setup killed with exit 137 at "Creating SIF file" | `mksquashfs` ran out of memory. Raise `--mem` or lower `VLLM_MKSQUASHFS_MEM`. |
+| `partial` image left behind after a failed pull | Safe to re-run setup: it deletes the `.partial` file first. |
+| `libnvrtc.so.13: cannot open shared object file` | The torchcodec overlay is missing. Delete `$VLLM_DIR/pylibs` and re-run setup (see [Known image issue](#known-image-issue-torchcodec-overlay)). |
+| `Input file not found`, or a validation error before any GPU job | Fix the path or the record the message names (see [Input format](#input-format)). Check `logs/split.log`. |
+| Download step fails with 401/403 | Gated model: accept its licence and `export HF_TOKEN` before `sbatch`. |
+| Shard job fails with CUDA out of memory | Lower `vllm.max_model_len` or `gpu_memory_utilization`, use a smaller model, or a larger `gpu_type` / `n_gpus`. See `logs/infer.NNNNN.log`. |
+| Shard hits its walltime | The retry doubles it automatically. If it still fails, use a smaller `shard_size` or a larger `runtime_min`. |
+| Jobs stay pending | `squeue --me --start`. GPU queues can be long; the controller waits (resubmit it if its 24 h walltime runs out). |
+| Which log do I read? | Controller: `llm-workflow.<jobid>.out`. Per step: `runs/<run_name>/logs/`. SLURM-level: `slurm-logs/`. |
+
 ## Upgrading vLLM
 
 Change `VLLM_IMAGE` in [`config/env.sh`](../../config/env.sh) to a newer
