@@ -23,4 +23,4 @@ jobs:
       - name: Ruff
         uses: astral-sh/ruff-action@v4.1.0
         with:
-          src: examples
+          src: examples workflows

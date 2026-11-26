@@ -14,7 +14,7 @@
 #   srun --partition=gpu --qos=gpu --gres=gpu:a100:1 --mem=82G --cpus-per-task=8 --time=01:00:00 --pty bash
 #
 # Refuses to run outside a SLURM job (i.e. on a login node) -- see
-# _check_running_in_slurm_job in config/env.sh.
+# _check_running_in_slurm_job in config/ollama.sh.
 #
 # This script is written to be safe to `source`: it does not enable `set -e`
 # (which would kill your interactive shell on any error) and cleans up after
@@ -23,8 +23,8 @@
 # Resolve repo root whether sourced from repo root or from scripts/.
 _STANAGE_HERE="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 _STANAGE_ROOT="$(cd "$_STANAGE_HERE/.." && pwd)"
-# shellcheck source=../config/env.sh
-source "$_STANAGE_ROOT/config/env.sh"
+# shellcheck source=../config/ollama.sh
+source "$_STANAGE_ROOT/config/ollama.sh"
 
 _check_running_in_slurm_job \
   "srun --partition=gpu --qos=gpu --gres=gpu:a100:1 --mem=82G --cpus-per-task=8 --time=01:00:00 --pty bash" \
@@ -32,7 +32,7 @@ _check_running_in_slurm_job \
 
 _check_ollama_host_loopback || return 1 2>/dev/null || exit 1
 
-# Warns only -- see config/env.sh. Never blocks the session.
+# Warns only -- see config/ollama.sh. Never blocks the session.
 _check_fastdata_perms
 
 # Unique per session/job on this node (SLURM job ID under srun/sbatch, else

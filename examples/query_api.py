@@ -11,7 +11,7 @@ Usage (inside the GPU session, after `source scripts/start_ollama.sh`):
     python3 examples/query_api.py "Explain diffusion models in two sentences."
 
 The model and server address are read from the environment (set by
-config/env.sh): MODEL and OLLAMA_HOST.
+config/ollama.sh): MODEL and OLLAMA_HOST.
 """
 import json
 import os

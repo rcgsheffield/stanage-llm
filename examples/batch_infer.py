@@ -8,7 +8,7 @@ Usage:
     python3 examples/batch_infer.py INPUT.jsonl OUTPUT.jsonl
 
 Model and server address come from the environment (MODEL, OLLAMA_HOST),
-set by config/env.sh. Uses the `openai` client if available, otherwise the
+set by config/ollama.sh. Uses the `openai` client if available, otherwise the
 standard library -- see query_api.py for details.
 """
 import json

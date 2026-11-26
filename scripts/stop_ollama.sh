@@ -23,8 +23,8 @@ fi
 # server, and an unscoped pkill would kill that too.
 if [[ -n "${OLLAMA_STANAGE_TAG:-}" ]]; then
   _STANAGE_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
-  # shellcheck source=../config/env.sh
-  source "$_STANAGE_ROOT/config/env.sh"
+  # shellcheck source=../config/ollama.sh
+  source "$_STANAGE_ROOT/config/ollama.sh"
   for pid in $(_ollama_session_server_pids "$OLLAMA_STANAGE_TAG"); do
     kill "$pid" 2>/dev/null && stopped=1
   done

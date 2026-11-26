@@ -1,27 +1,27 @@
 #!/usr/bin/env bash
-# Shared configuration for running an open-weight LLM on Stanage with Ollama.
+# Configuration for running an open-weight LLM on Stanage with Ollama.
 #
-# This file is *sourced* by the other scripts (and by you, if you want the
+# This file is *sourced* by the Ollama scripts (and by you, if you want the
 # variables in your own shell). It is the ONE place you need to edit.
 #
-#   source config/env.sh
+#   source config/ollama.sh
 #
 # The only thing most people change is MODEL (see the table in README.md).
 # Override it without editing the file:
 #
-#   MODEL=qwen2.5:14b source config/env.sh
+#   MODEL=qwen2.5:14b source config/ollama.sh
 
-# --- Where everything lives -------------------------------------------------
-# Fastdata (/mnt/parscratch) has no quota, is fast (Lustre), and is reachable
-# from BOTH the login nodes and the worker/GPU nodes. Your home directory
-# (/users/$USER) is only 50 GB, so model weights and the container image must
-# NOT go there.
-export PARSCRATCH="/mnt/parscratch/users/$USER"
+_OLLAMA_CONF_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+# shellcheck source=common.sh
+source "$_OLLAMA_CONF_DIR/common.sh"
+unset _OLLAMA_CONF_DIR
+
 export OLLAMA_DIR="$PARSCRATCH/ollama"
 
 # Ollama stores downloaded model weights here. Pointing OLLAMA_MODELS at
 # fastdata is what keeps multi-GB models off your 50 GB home quota.
 export OLLAMA_MODELS="$OLLAMA_DIR/models"
+
 
 # The Apptainer image we pull once from Docker Hub.
 export OLLAMA_SIF="$OLLAMA_DIR/ollama.sif"
@@ -33,10 +33,6 @@ export OLLAMA_SIF="$OLLAMA_DIR/ollama.sif"
 # (0.32.3 as of writing). Find current tags/digests at
 # https://hub.docker.com/r/ollama/ollama/tags
 export OLLAMA_IMAGE="docker://ollama/ollama@sha256:ec24bcaa2a810eb74171ce7c517813ef4821ed678988845e8d76cf62467036d4"
-
-# Keep Apptainer's build/pull cache off home too.
-export APPTAINER_CACHEDIR="$PARSCRATCH/apptainer/cache"
-
 # Address the Ollama server binds to and clients connect to. Apptainer
 # shares the host network (no container network isolation), so client and
 # server find each other on localhost — but that's about discovery, not
@@ -98,30 +94,6 @@ _check_ollama_host_loopback() {
   return 1
 }
 
-# Refuse to run outside a SLURM job. Apptainer is only installed on Stanage's
-# worker nodes, not the login nodes, and login nodes are shared and not meant
-# for sustained compute anyway. SLURM_JOB_ID is set by both srun and sbatch
-# and unset on a bare login-node shell, so its absence is a reliable "not in
-# a job" signal. $1 is the command the caller should suggest instead.
-# Override with STANAGE_ALLOW_NO_SLURM=1 for local/off-Stanage testing.
-# Called by 00_setup.sh and start_ollama.sh.
-_check_running_in_slurm_job() {
-  local hint="$1"
-  if [[ -n "${SLURM_JOB_ID:-}" ]]; then
-    return 0
-  fi
-  if [[ "${STANAGE_ALLOW_NO_SLURM:-0}" == "1" ]]; then
-    echo "WARNING: no SLURM_JOB_ID detected, but continuing because" >&2
-    echo "         STANAGE_ALLOW_NO_SLURM=1." >&2
-    return 0
-  fi
-  echo "ERROR: no active SLURM job detected (SLURM_JOB_ID is unset)." >&2
-  echo "       You appear to be on a login node ($(hostname)), where" >&2
-  echo "       Apptainer is not installed. Start a job with (from the repo root):" >&2
-  echo "         $hint" >&2
-  echo "       Set STANAGE_ALLOW_NO_SLURM=1 to override (e.g. local testing)." >&2
-  return 1
-}
 
 # Warn -- never change anything -- if the fastdata directories holding your
 # prompts, completions and server logs are reachable by other users. Fastdata

@@ -219,7 +219,7 @@ if you want SLURM's own `llm-batch.*.out` file to be mode `600` too — the
 > print a warning and refuse to start. Set `OLLAMA_ALLOW_NONLOOPBACK=1` to override at your own
 > risk.
 >
-> `config/env.sh` picks the *port* per job (an OS-assigned free port, rather
+> `config/ollama.sh` picks the *port* per job (an OS-assigned free port, rather
 > than a fixed one) so two jobs co-scheduled on the same node don't
 > accidentally collide. This is collision avoidance only — it does **not**
 > change anything above. A co-located user can still find your port with a
@@ -245,7 +245,7 @@ internet access needed.
 ```mermaid
 flowchart LR
     subgraph login["Login node: no Apptainer, no GPU"]
-        you(["You<br/>git clone, edit config/env.sh"])
+        you(["You<br/>git clone, edit config/ollama.sh"])
     end
 
     subgraph cpu["CPU worker node: one-time setup job"]
@@ -282,7 +282,7 @@ credentials. (The SSH form, `git@github.com:rcgsheffield/stanage-llm.git`,
 fails with `Permission denied (publickey)` unless you have registered an SSH
 key with GitHub from the cluster, so it isn't suggested for new accounts.)
 
-The only file you might edit is [`config/env.sh`](config/env.sh) — mainly to
+The only file you might edit is [`config/ollama.sh`](config/ollama.sh) — mainly to
 pick a different model (see [Choosing a model](#choosing-a-model)). Everything
 large (the container image, model weights, logs, results) is stored under
 `/mnt/parscratch/users/$USER` — Stanage's *fastdata* area — because your home
@@ -492,6 +492,26 @@ See [`examples/batch_inference.sbatch`](examples/batch_inference.sbatch) for the
 SLURM resource request you'd adapt for larger runs (batch jobs may run up to
 96 hours).
 
+### Batch at scale with vLLM + Snakemake
+
+For a whole dataset (thousands of prompts or more), use
+[`workflows/vllm-batch/`](workflows/vllm-batch/README.md) instead.
+[Snakemake](https://snakemake.readthedocs.io/) splits your JSONL into shards
+and submits one GPU job per shard. Each job loads the model once with
+[vLLM](https://docs.vllm.ai/)'s offline engine, which batches requests
+continuously and is typically several times faster than Ollama on the same
+GPU. Finished shards are kept, so a failed or timed-out run resumes where it
+stopped:
+
+```bash
+sbatch --mem=16G --cpus-per-task=4 --time=03:00:00 --wrap="bash workflows/vllm-batch/scripts/setup.sh"  # once
+sbatch workflows/vllm-batch/run_workflow.sbatch --config input=my_prompts.jsonl run_name=exp1
+```
+
+It takes the same `{"id", "prompt"}` input format, but models are Hugging Face
+repo ids (e.g. `Qwen/Qwen2.5-7B-Instruct`), not Ollama tags. Stick with the
+Ollama path above for trying models, small batches, or GGUF-only models.
+
 ---
 
 ## Troubleshooting
@@ -513,7 +533,7 @@ SLURM resource request you'd adapt for larger runs (batch jobs may run up to
 
 ## How it fits together
 
-Every script sources [`config/env.sh`](config/env.sh) first, so `MODEL`, the
+Every script sources [`config/ollama.sh`](config/ollama.sh) first, so `MODEL`, the
 fastdata paths and the API address come from one place. Inside a GPU job, the
 batch script starts Ollama in the background, sends it every prompt over a
 loopback-only HTTP API, and shuts it down again:
@@ -527,7 +547,7 @@ sequenceDiagram
     participant P as batch_infer.py
     participant F as Fastdata
 
-    J->>J: source config/env.sh<br/>MODEL, paths, OLLAMA_HOST=127.0.0.1:port
+    J->>J: source config/ollama.sh<br/>MODEL, paths, OLLAMA_HOST=127.0.0.1:port
     J->>S: source
     S->>O: apptainer exec --nv ... ollama serve (background)
     S->>O: poll http://$OLLAMA_HOST until ready
@@ -555,11 +575,11 @@ uses two of them.
 | Area | Path | Used for | Notes |
 | --- | --- | --- | --- |
 | Fastdata | `/mnt/parscratch/users/$USER` | Container image, model weights, server logs, batch job output/results | No quota, no backups. Fast (Lustre) and readable from both login and GPU nodes — the only area both need to see the same files. **A per-user directory on a cluster-wide filesystem: private only because `00_setup.sh` creates it mode `700`** ([details](#who-else-can-see-my-models-and-prompts)). Not tuned for lots of small files, so don't dump unrelated small-file workloads here. |
-| Home | `~` (`/users/$USER`) | This git checkout only | Capped at **50 GB**, not backed up. Everything large is deliberately kept out (see `config/env.sh`) so cloning this repo never risks the quota. |
+| Home | `~` (`/users/$USER`) | This git checkout only | Capped at **50 GB**, not backed up. Everything large is deliberately kept out (see `config/ollama.sh`) so cloning this repo never risks the quota. |
 
 Neither area is encrypted at rest or backed up, and everything this repo writes
 to fastdata is plaintext — including the server log (`server.*.log`) and, for
-batch jobs, every prompt and completion (`results.*.jsonl`) — another reason not
+batch jobs, every prompt and completion (`results.*.jsonl`, or `vllm/runs/<run_name>/` for the [vLLM workflow](workflows/vllm-batch/README.md#where-things-live)) — another reason not
 to run sensitive or confidential data through this setup. See
 [Security](#security) above, and [Who else can see my models and
 prompts?](#who-else-can-see-my-models-and-prompts) for who can read these files.
